@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { IVehicle, Vehicle } from "../../models/Vehicle";
 import { TransactionModel } from "../../models/Transaction";
-import { Beneficiary, PaymentTypeModel } from "../../models/PaymentType";
+import { PaymentTypeModel } from "../../models/PaymentType";
 import { UserModel } from "../../models/User";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
 import {
@@ -91,9 +91,9 @@ export class Tax {
         }).session(session);
         if (!vendor) throw new Error("Vendor not found");
 
-        const paymentType = await PaymentTypeModel.findById(vehicle.vehicleType)
-          .populate("beneficiaries.beneficiary")
-          .session(session);
+        const paymentType = await PaymentTypeModel.findById(
+          vehicle.vehicleType
+        ).session(session);
 
         if (!paymentType) throw new Error("Payment type not found");
 
@@ -148,20 +148,29 @@ export class Tax {
         ).session(session);
         if (!association) throw new Error("Association not found");
 
-        const mainBeneficiariesAccount =
-          await BeneficiaryService.getMainBeneficiaries(
-            association.userId.toString(),
+        // fetch all beneficiaries for the payment type filtering the case of vendor and super vendor
+        // for the role vendor and super vendor fetch only the data having the vendor and super vendor id for the target payment type
+        // Construct the query for beneficiaries
+        const beneficiaryQuery = {
+          $or: [
+            { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
+            { role: "vendor", userId: vendorUserAccount._id }, // Fetch vendor with specific userId
+            { role: "superVendor", userId: superVendor.userId }, // Fetch superVendor with specific userId
+          ],
+        };
+
+        const allBeneficiaries =
+          await BeneficiaryService.getBeneficiariesByPaymentType(
+            vehicle.vehicleType,
+            beneficiaryQuery,
             session
           );
-        const beneficiariesAccount = [
-          ...mainBeneficiariesAccount,
-          vendorUserAccount,
-          superVendorUserAccount,
-        ];
 
+        console.log({ allBeneficiaries });
+
+        // Validate the beneficiary percentages
         await BeneficiaryService.validateBeneficiaryPercentages(
-          beneficiariesAccount,
-          paymentType,
+          allBeneficiaries,
           session
         );
 
@@ -171,48 +180,23 @@ export class Tax {
           percentage: number; // Percentage of the total amount for the beneficiary in the tx
         }[] = [];
 
-        for (const beneficiary of beneficiariesAccount) {
-          const beneficiaryInBeneficiaryDB = await Beneficiary.findOne({
-            role: beneficiary.role,
-            _id: { $in: paymentType.beneficiaries.map((b) => b.beneficiary) },
-          }).session(session);
-
-          if (!beneficiaryInBeneficiaryDB)
-            throw new Error(
-              `Beneficiary with role ${beneficiary.role} not found`
-            );
-
-          const beneficiaryInPaymentType = paymentType.beneficiaries.find(
-            (b: any) =>
-              b.beneficiary.toString() ===
-                (beneficiaryInBeneficiaryDB as any)._id.toString() ||
-              (b.beneficiary._id &&
-                b.beneficiary._id.toString() ===
-                  (beneficiaryInBeneficiaryDB as any)._id.toString())
-          );
-
-          if (!beneficiaryInPaymentType) {
-            throw new Error(
-              "Beneficiary with this role not a beneficiary of tax payment type"
-            );
-          }
-
+        for (const beneficiary of allBeneficiaries) {
+          const { userId, percentage } = beneficiary;
           // Accumulate the beneficiaries with their percentages to store in tx schema
           beneficiariesWithPercentages.push({
-            userId: beneficiary._id,
-            percentage: beneficiaryInBeneficiaryDB.percentage,
+            userId,
+            percentage,
           });
 
           // Use $inc to update beneficiary wallet balance so as to maintain atomicity
-          const amount: number =
-            (totalAmount * beneficiaryInBeneficiaryDB.percentage) / 100;
+          const amount: number = (totalAmount * beneficiary.percentage) / 100;
           const beneficiaryWalletUpdate =
             await WalletService.creditEarningsWallet(
-              beneficiary._id,
+              userId,
               amount,
               WalletTransactionType.Commision,
               superAdminId as mongoose.Types.ObjectId,
-              beneficiary._id,
+              userId,
               generateUniqueReference(),
               "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
@@ -221,9 +205,7 @@ export class Tax {
             );
 
           if (!beneficiaryWalletUpdate)
-            throw new Error(
-              `BeneficiaryId ${beneficiary._id} wallet not found`
-            );
+            throw new Error(`BeneficiaryId ${userId} wallet not found`);
         }
 
         vehicle.taxPaidUntil = newTaxPaidUntil;
@@ -345,9 +327,9 @@ export class Tax {
 
         if (!vendor) throw new Error("Vendor not found");
 
-        const paymentType = await PaymentTypeModel.findById(vehicle.vehicleType)
-          .populate("beneficiaries.beneficiary")
-          .session(session);
+        const paymentType = await PaymentTypeModel.findById(
+          vehicle.vehicleType
+        ).session(session);
 
         if (!paymentType) throw new Error("Payment type not found");
 
@@ -406,21 +388,29 @@ export class Tax {
 
         if (!association) throw new Error("Association not found");
 
-        const mainBeneficiariesAccount =
-          await BeneficiaryService.getMainBeneficiaries(
-            association.userId.toString(),
+        // fetch all beneficiaries for the payment type filtering the case of vendor and super vendor
+        // for the role vendor and super vendor fetch only the data having the vendor and super vendor id for the target payment type
+        // Construct the query for beneficiaries
+        const beneficiaryQuery = {
+          $or: [
+            { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
+            { role: "vendor", userId: vendorUserAccount._id }, // Fetch vendor with specific userId
+            { role: "superVendor", userId: superVendor.userId }, // Fetch superVendor with specific userId
+          ],
+        };
+
+        const allBeneficiaries =
+          await BeneficiaryService.getBeneficiariesByPaymentType(
+            vehicle.vehicleType,
+            beneficiaryQuery,
             session
           );
 
-        const beneficiariesAccount = [
-          ...mainBeneficiariesAccount,
-          vendorUserAccount,
-          superVendorUserAccount,
-        ];
+        console.log({ allBeneficiaries });
 
+        // Validate the beneficiary percentages
         await BeneficiaryService.validateBeneficiaryPercentages(
-          beneficiariesAccount,
-          paymentType,
+          allBeneficiaries,
           session
         );
 
@@ -430,60 +420,42 @@ export class Tax {
           percentage: number; // Percentage of the total amount for the beneficiary in the tx
         }[] = [];
 
-        for (const beneficiary of beneficiariesAccount) {
-          const beneficiaryInBeneficiaryDB = await Beneficiary.findOne({
-            role: beneficiary.role,
-            _id: { $in: paymentType.beneficiaries.map((b) => b.beneficiary) },
-          }).session(session);
-
-          if (!beneficiaryInBeneficiaryDB)
-            throw new Error(
-              `Beneficiary with role ${beneficiary.role} not found`
-            );
-
-          const beneficiaryInPaymentType = paymentType.beneficiaries.find(
-            (b: any) =>
-              b.beneficiary.toString() ===
-                (beneficiaryInBeneficiaryDB as any)._id.toString() ||
-              (b.beneficiary._id &&
-                b.beneficiary._id.toString() ===
-                  (beneficiaryInBeneficiaryDB as any)._id.toString())
-          );
-
-          if (!beneficiaryInPaymentType) {
-            throw new Error(
-              "Beneficiary with this role not a beneficiary of tax payment type"
-            );
-          }
-
+        for (const beneficiary of allBeneficiaries) {
+          const { userId, percentage } = beneficiary;
           // Accumulate the beneficiaries with their percentages to store in tx schema
           beneficiariesWithPercentages.push({
-            userId: beneficiary._id,
-            percentage: beneficiaryInBeneficiaryDB.percentage,
+            userId,
+            percentage,
+          });
+
+          // Accumulate the beneficiaries with their percentages to store in tx schema
+          // Accumulate the beneficiaries with their percentages to store in tx schema
+          beneficiariesWithPercentages.push({
+            userId,
+            percentage,
           });
 
           const superAdmin = await UserService.getSuperAdmin();
           const superAdminId = superAdmin?._id;
 
           // Using $inc to update beneficiary wallet balance so as to maintain atomicity
+          const amount: number = (totalAmount * beneficiary.percentage) / 100;
           const beneficiaryWalletUpdate =
             await WalletService.creditEarningsWallet(
-              beneficiary._id,
-              (totalAmount * beneficiaryInBeneficiaryDB.percentage) / 100,
+              userId,
+              amount,
               WalletTransactionType.Commision,
               superAdminId as mongoose.Types.ObjectId,
-              beneficiary._id,
+              userId,
               generateUniqueReference(),
-              "Tax Payment Benefit",
+              "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
               vendorUserAccount._id as mongoose.Types.ObjectId,
               session
             );
 
           if (!beneficiaryWalletUpdate)
-            throw new Error(
-              `BeneficiaryId ${beneficiary._id} wallet not found or Error Updating Wallet`
-            );
+            throw new Error(`BeneficiaryId ${userId} wallet not found`);
         }
 
         const lastPaidUntilDate = moment.utc(
