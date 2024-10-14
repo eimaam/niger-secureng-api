@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { UserModel } from "../../models/User";
 import { IUser, RoleName } from "../../types";
-import { Beneficiary, PaymentTypeModel } from "../../models/PaymentType";
+import { BeneficiaryModel, PaymentTypeModel } from "../../models/PaymentType";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { body, validationResult } from "express-validator";
@@ -22,12 +22,6 @@ export class PaymentTypes {
           .withMessage("Renewal cycle is required"),
         body("amount").isNumeric().withMessage("Amount must be a number"),
         body("category").trim().notEmpty().withMessage("Category is required"),
-        body("beneficiaries")
-          .isArray()
-          .withMessage("Beneficiaries must be an array"),
-        body("beneficiaries.*")
-          .isMongoId()
-          .withMessage("Invalid beneficiary ID"),
       ].map((validation) => validation.run(req))
     );
 
@@ -43,46 +37,13 @@ export class PaymentTypes {
       renewalCycle,
       amount,
       category,
-      beneficiaries: beneficiaryIds,
     } = req.body;
 
-    // Check if all required fields are present
-    if (
-      !name ||
-      !paymentCycle ||
-      !renewalCycle ||
-      !amount ||
-      !category ||
-      !beneficiaryIds ||
-      !Array.isArray(beneficiaryIds)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required, including beneficiaries",
-      });
-    }
+    
 
     try {
       const result = await withMongoTransaction(async (session) => {
-        // Fetch beneficiaries from the database using their IDs
-        const beneficiaries = await Beneficiary.find({
-          _id: { $in: beneficiaryIds },
-        }).exec();
-
-        if (beneficiaries.length !== beneficiaryIds.length) {
-          throw new Error("Some beneficiary IDs are invalid");
-        }
-        // Validate that the sum of beneficiaries' percentages equals 100%
-        const totalPercentage = beneficiaries.reduce(
-          (sum, beneficiary) => sum + beneficiary.percentage,
-          0
-        );
-
-        if (totalPercentage !== 100) {
-          throw new Error(
-            "Total percentage of beneficiaries must be exactly 100%"
-          );
-        }
+       
         // Prepare the data for PaymentType creation
         const data = {
           name,
@@ -91,10 +52,6 @@ export class PaymentTypes {
           amount,
           category,
           createdBy: req.headers["userid"],
-          beneficiaries: beneficiaries.map((beneficiary) => ({
-            beneficiary: beneficiary._id,
-            percentage: beneficiary.percentage,
-          })),
         };
 
         // Create the PaymentType with the validated beneficiaries
@@ -118,14 +75,38 @@ export class PaymentTypes {
   static async getAll(_req: Request, res: Response) {
     try {
       const paymentTypes = await PaymentTypeModel.find()
-        .populate({
-          path: "beneficiaries.beneficiary",
-          select: "role percentage",
-        })
+        // .populate({
+        //   path: "beneficiaries.beneficiary",
+        //   select: "role percentage",
+        // })
         .populate({
           path: "category",
           select: "name",
         });
+
+        // fetch beneficiaries for each of the payment types and attach to the response
+      // returning only one instance of vendor and super vendor such that we do not have to return all the vendors and super vendors - all their percentages are same
+      for (const paymentType of paymentTypes) {
+        const beneficiaries = await BeneficiaryModel.find({
+          paymentType: paymentType._id,
+        }).select("role percentage userId");
+
+        const vendor = beneficiaries.find(
+          (beneficiary) => beneficiary.role === RoleName.Vendor
+        );
+
+        const superVendor = beneficiaries.find(
+          (beneficiary) => beneficiary.role === RoleName.SuperVendor
+        )
+
+        paymentType.set('beneficiaries', [
+          ...(vendor ? [vendor] : []),
+          ...(superVendor ? [superVendor] : []),
+        ], { strict: false });
+
+        paymentType.set('beneficiaries', beneficiaries, { strict: false });
+
+      }
 
       return res.status(200).json({
         success: true,
@@ -152,19 +133,6 @@ export class PaymentTypes {
         if (paymentCycle) dbQuery.paymentCycle = paymentCycle;
         if (renewalCycle) dbQuery.renewalCycle = renewalCycle;
         if (amount) dbQuery.amount = amount;
-
-        if (beneficiaries) {
-          try {
-            const validatedBeneficiaries =
-              await BeneficiaryService.revalidateBeneficiaries(
-                beneficiaries,
-                session
-              );
-            dbQuery.beneficiaries = validatedBeneficiaries;
-          } catch (error: any) {
-            throw new Error(error.message);
-          }
-        }
 
         const paymentType = await PaymentTypeModel.findByIdAndUpdate(
           id,
