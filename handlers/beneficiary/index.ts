@@ -149,7 +149,7 @@ export class BeneficiaryController {
     const { id } = req.params;
 
     try {
-      const beneficiary = await Beneficiary.findById(id);
+      const beneficiary = await BeneficiaryModel.findById(id);
       if (!beneficiary) {
         return res
           .status(404)
