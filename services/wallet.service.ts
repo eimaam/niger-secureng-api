@@ -155,7 +155,7 @@ export class WalletService {
   }
 
   static async creditEarningsWallet(
-    ownerUserId: string,
+    ownerUserId: mongoose.Types.ObjectId | string,
     amount: number,
     type: WalletTransactionType,
     from: Types.ObjectId,
