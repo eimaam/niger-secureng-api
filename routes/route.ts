@@ -504,7 +504,6 @@ route.post(
 route.post("/monnify/otp/resend", checkRole(), Monnify.resendOtp);
 route.post(
   "/monnify/banks/update",
-  checkRole(),
   MonnifyService.getAndUpdateSupportedBanks
 );
 
@@ -605,7 +604,7 @@ route.get(
   checkRole([RoleName.Government]),
   BeneficiaryController.getAllBeneficiaries
 );
-route.delete("/beneficiaries/:id", checkRole(), BeneficiaryController.delete);
+route.delete("/beneficiaries/:id", checkRole(), BeneficiaryController.deleteBeneficiary);
 
 // payment category
 route.post("/payment-category", checkRole(), PaymentCategory.create);
