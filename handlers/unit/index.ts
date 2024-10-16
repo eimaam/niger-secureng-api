@@ -59,8 +59,6 @@ export default class Units {
           path: "taxType",
           select: "name",
         })
-        .skip(skip)
-        .limit(limit);
 
       return res.status(200).json({
         success: true,
