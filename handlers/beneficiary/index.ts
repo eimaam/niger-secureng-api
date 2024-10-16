@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { BeneficiaryModel, PaymentTypeModel } from "../../models/PaymentType";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
-import { body, validationResult } from "express-validator";
+import { body, header, validationResult } from "express-validator";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { RoleName } from "../../types";
+import { UserModel } from "../../models/User";
 
 export class BeneficiaryController {
   // Create a new beneficiary
@@ -15,9 +16,7 @@ export class BeneficiaryController {
         .isFloat({ min: 0, max: 100 })
         .withMessage("Percentage must be between 0 and 100"),
       body("paymentTypeId").isMongoId().withMessage("Invalid payment type ID"),
-      body("role")
-        .isIn(["static", "vendor", "superVendor", "association"])
-        .withMessage("Invalid role"),
+      body("role").isIn(Object.values(RoleName)).withMessage("Invalid role"),
     ];
 
     // Run validation
@@ -34,6 +33,16 @@ export class BeneficiaryController {
 
     try {
       const result = await withMongoTransaction(async (session) => {
+        // verify the user ID and the role of the user passed in the request body are valid as in db
+        const user = await UserModel.findById(userId).session(session);
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        if (user.role !== role) {
+          throw new Error("User role does not match the role passed");
+        }
+
         // Fetch the payment type
         const paymentType = await PaymentTypeModel.findById(
           paymentTypeId
@@ -43,15 +52,28 @@ export class BeneficiaryController {
         }
 
         // Check if the same beneficiary with the same percentage and user ID already exists
-        const existingBeneficiary = await BeneficiaryModel.findOne({
-          userId,
-          percentage,
-          paymentType: paymentTypeId,
-        }).session(session);
+        const existingBeneficiaryWithSamePercentage =
+          await BeneficiaryModel.findOne({
+            userId,
+            percentage,
+          }).session(session);
 
-        if (existingBeneficiary) {
+        if (existingBeneficiaryWithSamePercentage) {
           throw new Error(
-            "Beneficiary with the same percentage and user ID already exists under this payment type"
+            "Beneficiary with the same user ID and percentage already exists"
+          );
+        }
+
+        // Check if the same user ID exists with a different percentage for the same payment type
+        const existingBeneficiaryWithDifferentPercentage =
+          await BeneficiaryModel.findOne({
+            userId,
+            paymentType: paymentTypeId,
+          }).session(session);
+
+        if (existingBeneficiaryWithDifferentPercentage) {
+          throw new Error(
+            "Beneficiary with the same user ID already exists for this payment type with a different percentage"
           );
         }
 
@@ -125,7 +147,18 @@ export class BeneficiaryController {
       }
 
       totalBeneficiaries = await BeneficiaryModel.countDocuments(query);
-      result = await query.skip(skip).limit(limit).exec();
+      result = await query
+        .populate({
+          path: "userId",
+          select: "fullName email role",
+        })
+        .populate({
+          path: "createdBy",
+          select: "fullName email",
+        })
+        .skip(skip)
+        .limit(limit)
+        .exec();
 
       const totalPages = Math.ceil(totalBeneficiaries / limit);
 
