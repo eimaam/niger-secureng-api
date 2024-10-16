@@ -19,7 +19,6 @@ export class BeneficiaryService {
     session?: ClientSession
   ) {
     const mongoSession = session ?? null;
-
     if (!paymentTypeId || !isValidObjectId(paymentTypeId)) {
       throw new Error("Invalid payment type ID");
     }
@@ -37,13 +36,10 @@ export class BeneficiaryService {
         paymentType: paymentTypeId,
         ...query,
       };
-
       // get the beneficiaries list and pass the query if it exists
       const beneficiariesList = await BeneficiaryModel.find({
-        beneficiaryQuery
-      }).session(mongoSession);
-
-      // Validate percentages of the beneficiaries
+        ...beneficiaryQuery
+      }).session(mongoSession);      // Validate percentages of the beneficiaries
       await BeneficiaryService.validateBeneficiaryPercentages(
         beneficiariesList,
         session
