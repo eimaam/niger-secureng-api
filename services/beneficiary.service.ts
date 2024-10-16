@@ -39,7 +39,9 @@ export class BeneficiaryService {
       // get the beneficiaries list and pass the query if it exists
       const beneficiariesList = await BeneficiaryModel.find({
         ...beneficiaryQuery
-      }).session(mongoSession);      // Validate percentages of the beneficiaries
+      }).session(mongoSession);      
+      
+      // Validate percentages of the beneficiaries
       await BeneficiaryService.validateBeneficiaryPercentages(
         beneficiariesList,
         session
