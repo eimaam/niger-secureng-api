@@ -36,6 +36,7 @@ import { DriverModel } from "../models/Driver";
 import { VehicleService } from "../services/vehicle.service";
 import mongoose from "mongoose";
 import { Transactions } from "../handlers/transaction";
+import { SubUnits } from "../handlers/sub-unit";
 
 const route = Router();
 
@@ -674,6 +675,25 @@ route.get(
 );
 route.patch("/units/:id", checkRole([RoleName.UnitAdmin]), Units.updateOne);
 route.delete("/units/:id", checkRole(), Units.delete);
+
+// sub-units
+route.post("/sub-unit", checkRole([RoleName.UnitAdmin]), SubUnits.create);
+route.get(
+  "/sub-units",
+  checkRole([
+    RoleName.GeneralAdmin,
+    RoleName.UnitAdmin,
+    RoleName.Government,
+    RoleName.RegistrationAdmin,
+    RoleName.VehicleRegistrationAdmin,
+    RoleName.UpdateAdmin,
+    RoleName.VehicleUpdateAdmin,
+  ]),
+  SubUnits.getAll
+);
+route.patch("/sub-units/:id", checkRole([RoleName.UnitAdmin]), SubUnits.updateOne);
+route.delete("/sub-units/:id", checkRole(), SubUnits.delete);
+
 
 // stakeholders
 // route.post("/stakeholder", Stakeholder.create);
