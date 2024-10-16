@@ -31,19 +31,10 @@ export class PaymentTypes {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const {
-      name,
-      paymentCycle,
-      renewalCycle,
-      amount,
-      category,
-    } = req.body;
-
-    
+    const { name, paymentCycle, renewalCycle, amount, category } = req.body;
 
     try {
       const result = await withMongoTransaction(async (session) => {
-       
         // Prepare the data for PaymentType creation
         const data = {
           name,
@@ -74,22 +65,19 @@ export class PaymentTypes {
 
   static async getAll(_req: Request, res: Response) {
     try {
-      const paymentTypes = await PaymentTypeModel.find()
-        // .populate({
-        //   path: "beneficiaries.beneficiary",
-        //   select: "role percentage",
-        // })
-        .populate({
-          path: "category",
-          select: "name",
-        });
+      const paymentTypes = await PaymentTypeModel.find();
 
-        // fetch beneficiaries for each of the payment types and attach to the response
+      // fetch beneficiaries for each of the payment types and attach to the response
       // returning only one instance of vendor and super vendor such that we do not have to return all the vendors and super vendors - all their percentages are same
       for (const paymentType of paymentTypes) {
         const beneficiaries = await BeneficiaryModel.find({
           paymentType: paymentType._id,
-        }).select("role percentage userId");
+        })
+          .select("role percentage")
+          .populate({
+            path: "userId",
+            select: "fullName email role",
+          });
 
         const vendor = beneficiaries.find(
           (beneficiary) => beneficiary.role === RoleName.Vendor
@@ -97,15 +85,15 @@ export class PaymentTypes {
 
         const superVendor = beneficiaries.find(
           (beneficiary) => beneficiary.role === RoleName.SuperVendor
-        )
+        );
 
-        paymentType.set('beneficiaries', [
-          ...(vendor ? [vendor] : []),
-          ...(superVendor ? [superVendor] : []),
-        ], { strict: false });
+        paymentType.set(
+          "beneficiaries",
+          [...(vendor ? [vendor] : []), ...(superVendor ? [superVendor] : [])],
+          { strict: false }
+        );
 
-        paymentType.set('beneficiaries', beneficiaries, { strict: false });
-
+        paymentType.set("beneficiaries", beneficiaries, { strict: false });
       }
 
       return res.status(200).json({
@@ -116,7 +104,11 @@ export class PaymentTypes {
     } catch (error) {
       return res
         .status(500)
-        .json({ success: false, message: "Error Fetching Payment Types", error });
+        .json({
+          success: false,
+          message: "Error Fetching Payment Types",
+          error,
+        });
     }
   }
 
@@ -143,9 +135,9 @@ export class PaymentTypes {
         if (!paymentType) {
           throw {
             code: 404,
-            success: false, 
-            message: "Payment Type Not Found"
-          }
+            success: false,
+            message: "Payment Type Not Found",
+          };
         }
 
         return paymentType;
@@ -157,13 +149,11 @@ export class PaymentTypes {
         data: result,
       });
     } catch (error: any) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Error Updating Payment Type",
-          error: error.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Error Updating Payment Type",
+        error: error.message,
+      });
     }
   }
 

@@ -39,7 +39,6 @@ export { BeneficiaryModel };
 
 export interface IPaymentType extends Document {
   name: PaymentTypeEnum | string;
-  category: mongoose.Types.ObjectId;
   paymentCycle: number; // in days
   renewalCycle: number; // in days
   amount: number; // Base amount for the payment
@@ -58,11 +57,6 @@ const PaymentTypeSchema = new Schema<IPaymentType>({
   paymentCycle: { type: Number, required: true },
   renewalCycle: { type: Number, required: true },
   amount: { type: Number, required: true },
-  category: {
-    type: Schema.Types.ObjectId,
-    ref: "PaymentCategory",
-    required: true,
-  },
   createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
 });
 
