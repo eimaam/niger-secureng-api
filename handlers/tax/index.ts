@@ -154,8 +154,8 @@ export class Tax {
         const beneficiaryQuery = {
           $or: [
             { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
-            { role: "vendor", userId: vendorUserAccount._id }, // Fetch vendor with specific userId
-            { role: "superVendor", userId: superVendor.userId }, // Fetch superVendor with specific userId
+            { role: RoleName.Vendor, userId: vendorUserAccount._id }, // Fetch vendor with specific userId
+            { role: RoleName.SuperVendor, userId: superVendor.userId }, // Fetch superVendor with specific userId
           ],
         };
 
@@ -165,8 +165,6 @@ export class Tax {
             beneficiaryQuery,
             session
           );
-
-        console.log({ allBeneficiaries });
 
         // Validate the beneficiary percentages
         await BeneficiaryService.validateBeneficiaryPercentages(
@@ -221,7 +219,7 @@ export class Tax {
               vehicle: vehicleId,
               processedBy: vendorUserAccount._id,
               type: paymentType._id,
-              category: paymentType.category,
+
               beneficiaries: beneficiariesWithPercentages,
             },
           ],
@@ -253,6 +251,7 @@ export class Tax {
         data: result,
       });
     } catch (error: any) {
+      console.log({ error })
       return res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -479,7 +478,7 @@ export class Tax {
               vehicle: vehicle._id,
               processedBy: vendorUserAccount._id,
               type: paymentType._id,
-              category: paymentType.category,
+
               beneficiaries: beneficiariesWithPercentages,
             },
           ],
