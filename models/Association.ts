@@ -40,7 +40,7 @@ const associationSchema: Schema = new Schema<IAssociation>(
       maxlength: 11,
       unqiue: true,
     },
-    code: { type: String, required: true, unique: true, minlength: 2 },
+    code: { type: String, required: true, unique: true, minlength: 2, uppercase: true },
     type: { type: Schema.Types.ObjectId, required: true, ref: "PaymentType" },
     wallet: { type: Schema.Types.ObjectId, required: true, ref: "Wallet" },
     userId: { type: Schema.Types.ObjectId, required: true, ref: "User" },

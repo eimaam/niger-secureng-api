@@ -11,7 +11,6 @@ interface ITransaction extends Document {
   driver?: mongoose.Types.ObjectId; // Reference to Driver for transactions that are driver related
   amount: number; // Amount paid
   type: mongoose.Types.ObjectId; // Reference to PaymentType
-  category: mongoose.Types.ObjectId; // Reference to PaymentCategory
   daysPaid?: number; // Number of days paid for
   date: Date; // Date of transaction
   status: PaymentStatusEnum; // Status of the transaction 
@@ -24,7 +23,6 @@ const TransactionSchema = new Schema<ITransaction>({
   driver: { type: Schema.Types.ObjectId, ref: 'Driver', index: true },
   amount: { type: Number, required: true, index: true },
   type: { type: Schema.Types.ObjectId, ref: 'PaymentType', required: true, index: true },
-  category: { type: Schema.Types.ObjectId, ref: 'PaymentCategory', required: true, index: true },
   daysPaid: { type: Number },
   date: { type: Date, required: true, default: Date.now, index: true },
   status: { type: String, enum: Object.values(PaymentStatusEnum), default: PaymentStatusEnum.SUCCESSFUL , index:true },

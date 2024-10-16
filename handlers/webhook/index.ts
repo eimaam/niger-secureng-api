@@ -425,7 +425,6 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy,
                   type: paymentType._id,
-                  category: paymentType.category,
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -519,7 +518,7 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -617,7 +616,7 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -726,7 +725,7 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -856,7 +855,7 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -909,7 +908,7 @@ export class Webhooks {
                   driver: driverId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -1052,7 +1051,7 @@ export class Webhooks {
                   driver: driverId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
@@ -1179,7 +1178,7 @@ export class Webhooks {
                   driver: driverId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-                  category: paymentType.category,
+
                   beneficiaries: beneficiariesWithPercentages,
                 },
               ],
