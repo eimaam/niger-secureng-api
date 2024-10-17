@@ -15,12 +15,14 @@ export interface IDownloadQuota {
 
 interface IVehicle extends Document {
   identityCode: string;
+  existingId: string;
   association: mongoose.Types.ObjectId;
   vehicleType: mongoose.Types.ObjectId;
   licensePlateNumber: string;
   chassisNumber: string;
   lga: mongoose.Types.ObjectId;
   unit: mongoose.Types.ObjectId;
+  subUnit: mongoose.Types.ObjectId;
   owner: mongoose.Types.ObjectId | IVehicleOwner;
   license?: ILicense | null;
   taxPaidUntil?: Date;
@@ -39,6 +41,12 @@ const vehicleSchema: Schema = new Schema<IVehicle>(
       index: true,
       sparse: true,
       uppercase: true,
+    },
+    existingId: {
+      type: String,
+      unique: true,
+      index: true,
+      sparse: true,
     },
     vehicleType: {
       type: Schema.Types.ObjectId,
@@ -94,6 +102,7 @@ const vehicleSchema: Schema = new Schema<IVehicle>(
       required: true,
     },
     unit: { type: Schema.Types.ObjectId, ref: "Unit", required: true },
+    subUnit: { type: Schema.Types.ObjectId, ref: "SubUnit", required: true },
     owner: { type: Schema.Types.ObjectId, ref: "VehicleOwner", required: true },
     license: {
       issueDate: { type: Date, sparse: true, index: true },

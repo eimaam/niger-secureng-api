@@ -53,9 +53,10 @@ export class Vehicles {
       lga,
       association,
       unit,
+      existingId,
+      subUnit,
       owner,
     } = req.body;
-
     if (
       !vehicleType ||
       !licensePlateNumber ||
@@ -63,6 +64,8 @@ export class Vehicles {
       !lga ||
       !association ||
       !unit ||
+      !existingId ||
+      !subUnit ||
       !owner ||
       !imageFile
     ) {
@@ -201,6 +204,8 @@ export class Vehicles {
           lga,
           association,
           unit,
+          subUnit, 
+          existingId,
           owner: vehicleOwner?._id,
           status: VehicleStatusEnum.NOT_ACTIVATED,
           createdBy: userId,
@@ -391,6 +396,8 @@ export class Vehicles {
       lga,
       association,
       unit,
+      existingId,
+      subUnit,
       ownerId, // if owner already exists, simply pass the owner's ID and we have the data in db
     } = req.body;
 
@@ -400,7 +407,9 @@ export class Vehicles {
       !chassisNumber ||
       !lga ||
       !association ||
-      !unit
+      !unit ||
+      !subUnit ||
+      !existingId
     ) {
       return res.status(400).json({
         success: false,
@@ -505,12 +514,14 @@ export class Vehicles {
         }
 
         const vehicleData = {
+          existingId,
           vehicleType, // taxType,
           licensePlateNumber,
           chassisNumber,
           lga,
           association,
           unit,
+          subUnit,
           owner: ownerId,
           status: VehicleStatusEnum.NOT_ACTIVATED,
           createdBy: userId,
@@ -772,8 +783,6 @@ export class Vehicles {
           licensePlateNumber: licensePlateNumber || vehicle.licensePlateNumber,
           owner: newVehicleOwnerId,
         };
-
-        console.log("newVehicleData", newVehicleData);
 
         if (!newVehicleData.owner) {
           throw {
@@ -1286,6 +1295,7 @@ export class Vehicles {
       lga,
       association,
       unit,
+      subUnit,
       owner,
     } = updateData;
 
@@ -1296,6 +1306,7 @@ export class Vehicles {
       lga,
       association,
       unit,
+      subUnit,
       owner,
     };
 
