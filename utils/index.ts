@@ -179,16 +179,7 @@ export const generateIdentityCode = (
   unitCode: string,
   totalVehiclesInSameUnit: number
 ) => {
-  let totalVehicles: number;
-
-  if (unitCode === "GMO" || unitCode === "GMJ") {
-    // GMO and GMJ Units are getting their id generated lacking behind by 1, as the fetch of vehicles in the unit lack behind by 1, and that makes identity code generation fail
-    // as vehicles can not have the same identity code > not sure why it happens so but this is a quick fix
-    totalVehicles = totalVehiclesInSameUnit + 2;
-  } else {
-    //  for other units, the total vehicles in the same unit is simply incremented by 1 to create a unique identity code for the vehicle
-    totalVehicles = totalVehiclesInSameUnit + 1;
-  }
+    const totalVehicles = totalVehiclesInSameUnit + 1;
 
   return `${unitCode}${totalVehicles}`;
 };

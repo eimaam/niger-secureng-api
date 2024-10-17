@@ -47,6 +47,7 @@ const vehicleSchema: Schema = new Schema<IVehicle>(
       unique: true,
       index: true,
       sparse: true,
+      uppercase: true,
     },
     vehicleType: {
       type: Schema.Types.ObjectId,

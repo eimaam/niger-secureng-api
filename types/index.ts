@@ -91,9 +91,15 @@ export enum AccountStatusEnum {
 
 // Define enum for vehicle type
 export enum VehicleTypeEnum {
-  TRICYCLE = "TRICYCLE",
-  OKADA = "OKADA",
-  JEGA = "JEGA",
+  TRICYCLE = 'TRICYCLE',
+  OKADA = 'OKADA',
+  JEGA = 'JEGA',
+  OPEN_BODY = 'OPEN_BODY',
+  SULEJA_TRICYCLE = 'SULEJA_TRICYCLE',
+  SULEJA_OKADA = 'SULEJA_OKADA',
+  SULEJA_JEGA = 'SULEJA_JEGA',
+  TAFA_TRICYCLE = 'TAFA_TRICYCLE',
+  TAFA_OKADA = 'TAFA_OKADA',
 }
 
 export enum Complexion {
