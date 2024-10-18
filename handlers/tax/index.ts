@@ -60,6 +60,10 @@ export class Tax {
         ).session(session);
         if (!vehicle) throw new Error("Vehicle not found");
 
+        if (!vehicle.identityCode) {
+          throw new Error("Vehicle is not fully registered");
+        }
+
         if (
           vehicle.taxPaidUntil &&
           vehicle.status !== VehicleStatusEnum.ACTIVATED
@@ -154,8 +158,8 @@ export class Tax {
         const beneficiaryQuery = {
           $or: [
             { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
-            { role: RoleName.Vendor, userId: vendorUserAccount._id }, // Fetch vendor with specific userId
-            { role: RoleName.SuperVendor, userId: superVendor.userId }, // Fetch superVendor with specific userId
+            { role: RoleName.Vendor, user: vendorUserAccount._id }, // Fetch vendor with specific userId
+            { role: RoleName.SuperVendor, user: superVendor.userId }, // Fetch superVendor with specific userId
           ],
         };
 
@@ -168,21 +172,20 @@ export class Tax {
 
         // Validate the beneficiary percentages
         await BeneficiaryService.validateBeneficiaryPercentages(
-          allBeneficiaries,
-          session
+          allBeneficiaries
         );
 
         // hold the beneficiaries with their percentages to store in tx schema
         let beneficiariesWithPercentages: {
-          userId: mongoose.Types.ObjectId; // Reference to User
+          user: mongoose.Types.ObjectId; // Reference to User
           percentage: number; // Percentage of the total amount for the beneficiary in the tx
         }[] = [];
 
         for (const beneficiary of allBeneficiaries) {
-          const { userId, percentage } = beneficiary;
+          const { user, percentage } = beneficiary;
           // Accumulate the beneficiaries with their percentages to store in tx schema
           beneficiariesWithPercentages.push({
-            userId,
+            user,
             percentage,
           });
 
@@ -190,11 +193,11 @@ export class Tax {
           const amount: number = (totalAmount * beneficiary.percentage) / 100;
           const beneficiaryWalletUpdate =
             await WalletService.creditEarningsWallet(
-              userId,
+              user,
               amount,
               WalletTransactionType.Commision,
               superAdminId as mongoose.Types.ObjectId,
-              userId,
+              user,
               generateUniqueReference(),
               "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
@@ -203,7 +206,7 @@ export class Tax {
             );
 
           if (!beneficiaryWalletUpdate)
-            throw new Error(`BeneficiaryId ${userId} wallet not found`);
+            throw new Error(`BeneficiaryId ${user} wallet not found`);
         }
 
         vehicle.taxPaidUntil = newTaxPaidUntil;
@@ -219,8 +222,10 @@ export class Tax {
               vehicle: vehicleId,
               processedBy: vendorUserAccount._id,
               type: paymentType._id,
-
-              beneficiaries: beneficiariesWithPercentages,
+              beneficiaries: beneficiariesWithPercentages.map((b) => ({
+                ...b,
+                userId: b.user,
+              })),
             },
           ],
           { session }
@@ -251,7 +256,6 @@ export class Tax {
         data: result,
       });
     } catch (error: any) {
-      console.log({ error })
       return res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -393,8 +397,8 @@ export class Tax {
         const beneficiaryQuery = {
           $or: [
             { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
-            { role: "vendor", userId: vendorUserAccount._id }, // Fetch vendor with specific userId
-            { role: "superVendor", userId: superVendor.userId }, // Fetch superVendor with specific userId
+            { role: "vendor", user: vendorUserAccount._id }, // Fetch vendor with specific userId
+            { role: "superVendor", user: superVendor.userId }, // Fetch superVendor with specific userId
           ],
         };
 
@@ -409,28 +413,27 @@ export class Tax {
 
         // Validate the beneficiary percentages
         await BeneficiaryService.validateBeneficiaryPercentages(
-          allBeneficiaries,
-          session
+          allBeneficiaries
         );
 
         // hold the beneficiaries with their percentages to store in tx schema
         let beneficiariesWithPercentages: {
-          userId: mongoose.Types.ObjectId; // Reference to User
+          user: mongoose.Types.ObjectId; // Reference to User
           percentage: number; // Percentage of the total amount for the beneficiary in the tx
         }[] = [];
 
         for (const beneficiary of allBeneficiaries) {
-          const { userId, percentage } = beneficiary;
+          const { user, percentage } = beneficiary;
           // Accumulate the beneficiaries with their percentages to store in tx schema
           beneficiariesWithPercentages.push({
-            userId,
+            user,
             percentage,
           });
 
           // Accumulate the beneficiaries with their percentages to store in tx schema
           // Accumulate the beneficiaries with their percentages to store in tx schema
           beneficiariesWithPercentages.push({
-            userId,
+            user,
             percentage,
           });
 
@@ -441,11 +444,11 @@ export class Tax {
           const amount: number = (totalAmount * beneficiary.percentage) / 100;
           const beneficiaryWalletUpdate =
             await WalletService.creditEarningsWallet(
-              userId,
+              user,
               amount,
               WalletTransactionType.Commision,
               superAdminId as mongoose.Types.ObjectId,
-              userId,
+              user,
               generateUniqueReference(),
               "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
@@ -454,7 +457,7 @@ export class Tax {
             );
 
           if (!beneficiaryWalletUpdate)
-            throw new Error(`BeneficiaryId ${userId} wallet not found`);
+            throw new Error(`BeneficiaryId ${user} wallet not found`);
         }
 
         const lastPaidUntilDate = moment.utc(
@@ -479,7 +482,10 @@ export class Tax {
               processedBy: vendorUserAccount._id,
               type: paymentType._id,
 
-              beneficiaries: beneficiariesWithPercentages,
+              beneficiaries: beneficiariesWithPercentages.map((b) => ({
+                ...b,
+                userId: b.user,
+              })),
             },
           ],
           { session }
