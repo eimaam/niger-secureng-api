@@ -7,7 +7,7 @@ import { PaymentTypeEnum, RoleName } from "../types";
  */
 
 export interface IBeneficiary extends Document {
-  userId: mongoose.Types.ObjectId; // Reference to User
+  user: mongoose.Types.ObjectId; // Reference to User
   role: RoleName; // Role of the user
   percentage: number; // Percentage of the total amount for this role
   paymentType: mongoose.Types.ObjectId; // Reference to PaymentType
@@ -15,7 +15,7 @@ export interface IBeneficiary extends Document {
 }
 
 const BeneficiarySchema = new Schema<IBeneficiary>({
-  userId: {
+  user: {
     type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
@@ -25,7 +25,6 @@ const BeneficiarySchema = new Schema<IBeneficiary>({
   paymentType: {
     type: Schema.Types.ObjectId,
     ref: "PaymentType",
-    required: true,
   },
   createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
 }, { timestamps: true });

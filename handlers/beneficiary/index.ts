@@ -16,7 +16,6 @@ export class BeneficiaryController {
         .isFloat({ min: 0, max: 100 })
         .withMessage("Percentage must be between 0 and 100"),
       body("paymentTypeId").isMongoId().withMessage("Invalid payment type ID"),
-      body("role").isIn(Object.values(RoleName)).withMessage("Invalid role"),
     ];
 
     // Run validation
@@ -28,7 +27,7 @@ export class BeneficiaryController {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { userId, percentage, paymentTypeId, role } = req.body;
+    const { userId, percentage, paymentTypeId } = req.body;
     const createdBy = req.headers["userid"] as string;
 
     try {
@@ -39,14 +38,11 @@ export class BeneficiaryController {
           throw new Error("User not found");
         }
 
-        if (user.role !== role) {
-          throw new Error("User role does not match the role passed");
-        }
-
         // Fetch the payment type
         const paymentType = await PaymentTypeModel.findById(
           paymentTypeId
         ).session(session);
+        
         if (!paymentType) {
           throw new Error("Payment type not found");
         }
@@ -54,7 +50,7 @@ export class BeneficiaryController {
         // Check if the same beneficiary with the same percentage and user ID already exists
         const existingBeneficiaryWithSamePercentage =
           await BeneficiaryModel.findOne({
-            userId,
+            user: userId,
             percentage,
           }).session(session);
 
@@ -67,7 +63,7 @@ export class BeneficiaryController {
         // Check if the same user ID exists with a different percentage for the same payment type
         const existingBeneficiaryWithDifferentPercentage =
           await BeneficiaryModel.findOne({
-            userId,
+            user: userId,
             paymentType: paymentTypeId,
           }).session(session);
 
@@ -83,11 +79,20 @@ export class BeneficiaryController {
         }).session(session);
 
         // Calculate the total percentage including the new beneficiary
-        const totalPercentage =
-          existingBeneficiaries.reduce(
-            (sum, beneficiary) => sum + beneficiary.percentage,
-            0
-          ) + percentage;
+        // if the new beneficiary is a vendor or super vendor, calculate the total percentage without the new beneficiary percentage
+        // this is cause we have several vendors and super vendors and they benefit from a payment they process which means they are not constant
+        // lets implement the logic
+        let totalPercentage = 0;
+        if (user.role === RoleName.Vendor || user.role === RoleName.SuperVendor) {
+          totalPercentage = existingBeneficiaries.reduce((sum, beneficiary) => {
+            return sum + beneficiary.percentage;
+          }, 0);
+        } else {
+          totalPercentage = existingBeneficiaries.reduce((sum, beneficiary) => {
+            return sum + beneficiary.percentage;
+          }, percentage);
+        }
+
 
         if (totalPercentage > 100) {
           throw new Error(
@@ -97,9 +102,9 @@ export class BeneficiaryController {
 
         // Create the new beneficiary
         const newBeneficiary = new BeneficiaryModel({
-          userId,
+          user: userId,
           percentage,
-          role,
+          role: user.role,
           paymentType: paymentTypeId,
           createdBy,
         });
@@ -149,22 +154,35 @@ export class BeneficiaryController {
       totalBeneficiaries = await BeneficiaryModel.countDocuments(query);
       result = await query
         .populate({
-          path: "userId",
+          path: "user",
           select: "fullName email role",
         })
         .populate({
           path: "createdBy",
           select: "fullName email",
         })
+        .populate("paymentType")
         .skip(skip)
         .limit(limit)
         .exec();
+
+
+        // filter & return one instance only for each beneficiary based on _id field
+        const filteredBeneficiaryList = result.reduce((acc: any, current: any) => {
+          const x = acc.find((item: any) => item.user._id === current.user._id);
+          if (!x) {
+            return acc.concat([current]);
+          } else {
+            return acc;
+          }
+        }
+        , []);
 
       const totalPages = Math.ceil(totalBeneficiaries / limit);
 
       return res.status(200).json({
         success: true,
-        data: result,
+        data: filteredBeneficiaryList,
         pagination: {
           totalBeneficiaries,
           totalPages,
@@ -244,7 +262,7 @@ export class BeneficiaryController {
         // Check if the same beneficiary with the same percentage and user ID already exists
         if (userId && percentage && paymentTypeId) {
           const duplicateBeneficiary = await BeneficiaryModel.findOne({
-            userId,
+            user: userId,
             percentage,
             paymentType: paymentTypeId,
             _id: { $ne: id },
@@ -258,7 +276,7 @@ export class BeneficiaryController {
         }
 
         // Update the beneficiary fields
-        if (userId) existingBeneficiary.userId = userId;
+        if (userId) existingBeneficiary.user = userId;
         if (percentage) existingBeneficiary.percentage = percentage;
         if (paymentTypeId) existingBeneficiary.paymentType = paymentTypeId;
         if (role) existingBeneficiary.role = role;

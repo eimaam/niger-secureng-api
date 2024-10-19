@@ -33,6 +33,21 @@ import { DriverModel } from "../../models/Driver";
 import { InvoiceService } from "../../services/invoice.service";
 import { VehicleService } from "../../services/vehicle.service";
 
+const formatBeneficiariesForTransaction = (
+  beneficiaries: {
+    user: mongoose.Types.ObjectId;
+    percentage: number;
+    paymentType: mongoose.Types.ObjectId;
+  }[]
+) => {
+  const formatted = beneficiaries.map((b) => ({
+    ...b,
+    userId: b.user,
+  }));
+
+  return formatted;
+};
+
 // transaction status values from Monnify
 enum MonnifyTransactionStatusEnum {
   PAID = "PAID",
@@ -197,13 +212,13 @@ export class Webhooks {
               message: "Payment Type Not Found",
             };
           }
-
           const beneficiariesWithPercentages =
             await BeneficiaryService.getBeneficiariesByPaymentType(
               paymentTypeId,
               session
             );
 
+          console.log("Beneficiaries ====> ", beneficiariesWithPercentages);
           // vehicle registration payment type processing
           if (paymentType.name === PaymentTypeEnum.VEHICLE_REGISTRATION) {
             const invoice = await InvoiceModel.findOne({
@@ -290,19 +305,25 @@ export class Webhooks {
             }
             // getting this to calculate the number to assign to the vehicle alongside the unit code
             // only fetch vehicles with identity code
-            const totalVehiclesInSameUnit = await Vehicle.find({
-              unit: existingUnit._id,
-              identityCode: { $exists: true, $ne: null },
-            })
-              .countDocuments()
-              .session(session);
+            const totalVehiclesInSameUnit =
+              await VehicleService.getTotalNumberOfVehiclesInSameUnit(
+                existingUnit._id,
+                session
+              );
+            // Vehicle.find({
+            //   unit: existingUnit._id,
+            //   identityCode: { $exists: true, $ne: null },
+            // })
+            //   .countDocuments()
+            //   .session(session);
 
             //  Auto Generate identity code based on unit code and number of vehicles in the unit
             const identityCode = generateIdentityCode(
               existingUnit.code,
               totalVehiclesInSameUnit
             );
-
+            console.log({ identityCode });
+            console.log({ vehicleId });
             // generate licence registration and expiry date - 1 year from the current date
             const licenceRegistrationDate = generateYearDateRange().startDate;
             const licenceExpiryDate = generateYearDateRange().endDate;
@@ -384,7 +405,7 @@ export class Webhooks {
 
             for (const beneficiary of beneficiariesWithPercentages) {
               const beneficiaryAccount = await UserModel.findById(
-                beneficiary.userId
+                beneficiary.user
               ).session(session);
 
               if (!beneficiaryAccount) {
@@ -425,7 +446,10 @@ export class Webhooks {
                   vehicle: vehicleId,
                   processedBy,
                   type: paymentType._id,
-                  beneficiaries: beneficiariesWithPercentages,
+                  // spread the beneficiary with percentages and for each make the user field userId
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -519,7 +543,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -617,7 +643,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -726,7 +754,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -856,7 +886,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -909,7 +941,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -960,7 +994,6 @@ export class Webhooks {
           } else if (
             paymentType.name === PaymentTypeEnum.DRIVER_PERMIT_PRINTING
           ) {
-            console.log("driver permit printing");
             const driverId = metaData?.driverId;
 
             if (!driverId || !isValidObjectId(driverId)) {
@@ -1052,7 +1085,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -1179,7 +1214,9 @@ export class Webhooks {
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
 
-                  beneficiaries: beneficiariesWithPercentages,
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
                 },
               ],
               { session }
@@ -1384,7 +1421,7 @@ export class Webhooks {
 
   private static async distributeFundsToBeneficiaries(
     beneficiariesWithPercentages: {
-      userId: mongoose.Types.ObjectId;
+      user: mongoose.Types.ObjectId;
       percentage: number;
     }[],
     amountPaid: number,
@@ -1403,7 +1440,7 @@ export class Webhooks {
         };
       }
       const beneficiaryAccount = await UserModel.findById(
-        beneficiary.userId
+        beneficiary.user
       ).session(session);
 
       if (!beneficiaryAccount) {

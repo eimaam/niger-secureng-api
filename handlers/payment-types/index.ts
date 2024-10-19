@@ -21,7 +21,6 @@ export class PaymentTypes {
           .notEmpty()
           .withMessage("Renewal cycle is required"),
         body("amount").isNumeric().withMessage("Amount must be a number"),
-        body("category").trim().notEmpty().withMessage("Category is required"),
       ].map((validation) => validation.run(req))
     );
 
@@ -31,7 +30,7 @@ export class PaymentTypes {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { name, paymentCycle, renewalCycle, amount, category } = req.body;
+    const { name, paymentCycle, renewalCycle, amount } = req.body;
 
     try {
       const result = await withMongoTransaction(async (session) => {
@@ -41,7 +40,6 @@ export class PaymentTypes {
           paymentCycle,
           renewalCycle,
           amount,
-          category,
           createdBy: req.headers["userid"],
         };
 
@@ -75,7 +73,7 @@ export class PaymentTypes {
         })
           .select("role percentage")
           .populate({
-            path: "userId",
+            path: "user",
             select: "fullName email role",
           });
 
