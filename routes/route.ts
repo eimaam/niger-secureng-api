@@ -9,7 +9,6 @@ import { Drivers } from "../handlers/drivers";
 import { Associations } from "../handlers/associations";
 import Units from "../handlers/unit";
 import PaymentCategory from "../handlers/payment-category";
-import { Stakeholder } from "../handlers/stakeholders";
 import { SuperVendor } from "../handlers/super-vendor";
 import { LGAs } from "../handlers/Lga";
 import { LGAHeads } from "../handlers/LgaHead";
@@ -32,7 +31,6 @@ import { body, validationResult } from "express-validator";
 import { PaymentTypeModel } from "../models/PaymentType";
 import { Vehicle } from "../models/Vehicle";
 import { withMongoTransaction } from "../utils/mongoTransaction";
-import { DriverModel } from "../models/Driver";
 import { VehicleService } from "../services/vehicle.service";
 import mongoose from "mongoose";
 import { Transactions } from "../handlers/transaction";
@@ -448,7 +446,7 @@ route.get(
   WalletController.getByUserId
 );
 route.post(
-  "/wallets/balance/reset",
+  "/wallets/deposit/balance/reset",
   checkRole(),
   WalletController.resetAllBalances
 );

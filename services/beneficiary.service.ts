@@ -5,6 +5,15 @@ import {
   PaymentTypeModel,
 } from "../models/PaymentType";
 
+function hasCircularReference(obj: any): boolean {
+  try {
+    JSON.stringify(obj);
+    return false; // If no error, then it's not circular
+  } catch (err) {
+    return true; // If JSON.stringify throws, it's circular
+  }
+}
+
 export class BeneficiaryService {
 /**
  * Fetch beneficiaries by payment type
@@ -31,24 +40,25 @@ export class BeneficiaryService {
       if (!paymentType) {
         throw new Error("Payment type not found");
       }
-
       const beneficiaryQuery = {
         paymentType: paymentTypeId,
-        ...query,
+        ...(query && !hasCircularReference(query) ? query : {}), 
       };
-      // get the beneficiaries list and pass the query if it exists
-      const beneficiariesList = await BeneficiaryModel.find({
-        ...beneficiaryQuery
-      }).session(mongoSession);      
       
+      // get the beneficiaries list and pass the query if it exists
+      const beneficiariesList = await BeneficiaryModel.find(beneficiaryQuery).session(mongoSession);      
+
+      if (!beneficiariesList || beneficiariesList.length === 0) {
+        throw new Error("No beneficiaries found for the payment type");
+      }
+
       // Validate percentages of the beneficiaries
       await BeneficiaryService.validateBeneficiaryPercentages(
         beneficiariesList,
-        session
       );
 
       const beneficiariesWithPercentages = beneficiariesList.map((b) => ({
-        userId: b.userId,
+        user: b.user,
         percentage: b.percentage,
         paymentType: b.paymentType,
       }));
@@ -57,7 +67,7 @@ export class BeneficiaryService {
     } catch (error: any) {
       console.error(
         "Error fetching beneficiaries by payment type:",
-        error.message
+        error
       );
       throw new Error(error.message);
     }
@@ -65,25 +75,12 @@ export class BeneficiaryService {
 
   // Validate that the total percentages sum up to 100%
   static async validateBeneficiaryPercentages(
-    beneficiaries: Pick<IBeneficiary, "userId" | "percentage">[],
-    session?: ClientSession
+    beneficiaries: Pick<IBeneficiary, "user" | "percentage">[]
   ) {
-    const mongoSession = session ?? null;
-
-    let totalPercentage = 0;
-
-    for (const beneficiary of beneficiaries) {
-      const { percentage } = beneficiary;
-      if (percentage > 100) {
-        throw new Error(`Invalid percentage value ${percentage} for beneficiary ${beneficiary.userId}`);
-      }
-      totalPercentage += percentage;
-    }
+    const totalPercentage = beneficiaries.reduce((sum, b) => sum + b.percentage, 0);
 
     if (totalPercentage !== 100) {
-      throw new Error(
-        `Total percentage of beneficiaries is ${totalPercentage}%, but should be exactly 100%.`
-      );
+      throw new Error("Total percentage of beneficiaries must sum up to 100%");
     }
   }
 
