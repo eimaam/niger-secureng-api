@@ -52,11 +52,12 @@ export class BeneficiaryController {
           await BeneficiaryModel.findOne({
             user: userId,
             percentage,
+            paymentType: paymentTypeId,
           }).session(session);
 
         if (existingBeneficiaryWithSamePercentage) {
           throw new Error(
-            "Beneficiary with the same user ID and percentage already exists"
+            "Beneficiary with the same user ID and percentage already exists for this Payment Type"
           );
         }
 
