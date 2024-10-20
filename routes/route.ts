@@ -228,6 +228,15 @@ route.post(
   Vehicles.updateOwner
 );
 
+// drivers
+route.post('/driver',  checkRole([
+  RoleName.GeneralAdmin,
+  RoleName.VehicleAdmin,
+  RoleName.VehicleRegistrationAdmin,
+]), 
+upload.single('image'),
+Drivers.registerDriver);
+
 // download
 route.get("/downloads", checkRole([]), DownloadHistory.getAll);
 route.post("/vehicles/quota", async (req: Request, res: Response) => {
@@ -357,6 +366,11 @@ route.post(
   "/driver/download/permit/:id",
   checkRole([RoleName.PrintingAdmin]),
   Drivers.downloadPermit
+);
+route.post(
+  "/driver/download/qr/:driverId",
+  checkRole([RoleName.PrintingAdmin]),
+  Drivers.downloadQrCode
 );
 
 // supervendor

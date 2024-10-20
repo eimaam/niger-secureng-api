@@ -2,18 +2,21 @@ import { Request, Response } from "express";
 import { DriverModel, IDriver } from "../../models/Driver";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
 import { PaymentTypeModel } from "../../models/PaymentType";
-import { PaymentTypeEnum, RoleName, VehicleTypeEnum } from "../../types";
+import { PaymentTypeEnum, RoleName } from "../../types";
 import {
   IInvoiceData,
   MonnifyService,
 } from "../../services/monnify.wallet.service";
 import { DownloadHistoryModel } from "../../models/Transaction";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
-import { validationResult } from "express-validator";
+import { body, validationResult } from "express-validator";
 import { uploadImage } from "../../services/googlecloud.service";
 import { UserModel } from "../../models/User";
 import { AssociationModel } from "../../models/Association";
 import { convertImageToBase64 } from "../../utils";
+import { BUCKET_STORAGE_LOCATION } from "../../utils/config";
+import { isValidObjectId } from "mongoose";
+import { IDownloadQuota } from "../../models/Vehicle";
 
 export class Drivers {
   static async registerDriver(req: Request, res: Response) {
@@ -44,6 +47,7 @@ export class Drivers {
       // guarantor object > reference GuranatorSchema
       guarantor,
       association,
+      associationNumber,
       vehicleType,
     } = req.body;
     // validate vehicleType
@@ -69,12 +73,23 @@ export class Drivers {
       const result = await withMongoTransaction(async (session) => {
         //  check if driver with the same NIN or phoneNumber already exists
         const existingDriver = await DriverModel.findOne({
-          $or: [{ nin }, { phoneNumber }],
+          $or: [{ nin }, { phoneNumber }, { email }],
         }).session(session);
 
         if (existingDriver) {
           throw new Error(
-            "Driver with this NIN or phoneNumber Number already registered"
+            "Driver with this NIN, Phone Number or Email already registered"
+          );
+        }
+
+        // verify driver with the same association number
+        const existingAssociationNumber = await DriverModel.findOne({
+          associationNumber,
+        }).session(session);
+
+        if (existingAssociationNumber) {
+          throw new Error(
+            "Driver with this Association Number already registered"
           );
         }
 
@@ -95,6 +110,7 @@ export class Drivers {
           address,
           guarantor: parsedGuarantor,
           association,
+          associationNumber,
           vehicleType,
           createdBy: req.headers["userid"],
         };
@@ -150,8 +166,9 @@ export class Drivers {
         try {
           const imageUrl = await uploadImage(
             imageFile,
-            `driver-images/${result.driver._id}`
+            `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}.png`
           );
+          
           if (!imageUrl) {
             throw new Error("Error uploading image");
           }
@@ -415,6 +432,7 @@ export class Drivers {
         guarantor,
         vehicleType,
         association,
+        associationNumber
       } = req.body;
 
       const formattedDateOfBirth = dob ? new Date(dob) : undefined;
@@ -435,18 +453,30 @@ export class Drivers {
         address,
         guarantor,
         association,
+        associationNumber,
         vehicleType,
       };
 
       const result = await withMongoTransaction(async (session) => {
         const existingDriver = await DriverModel.findOne({
-          $or: [{ nin }, { phoneNumber }],
+          $or: [{ nin }, { phoneNumber }, { email }],
           _id: { $ne: id },
         }).session(session);
 
         if (existingDriver) {
           throw new Error(
             "Another driver with this NIN or phone number already exists"
+          );
+        }
+
+        const existingAssociationNumber = await DriverModel.findOne({
+          associationNumber,
+          _id: { $ne: id },
+        }).session(session);
+
+        if (existingAssociationNumber) {
+          throw new Error(
+            "Another driver with this Association Number already exists"
           );
         }
 
@@ -540,5 +570,115 @@ export class Drivers {
         data: result,
       });
     } catch (error: any) {}
+  }
+
+  static async downloadQrCode(req: Request, res: Response) {
+    const { driverId } = req.params;
+
+    const { type } = req.body;
+
+    await body("type")
+      .notEmpty()
+      .withMessage("Invoice type is required")
+      .equals(PaymentTypeEnum.DRIVER_QR_CODE_PRINTING)
+      .withMessage("Invalid invoice type")
+      .run(req);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+        errors: errors.array(),
+      });
+    }
+
+    if (!isValidObjectId(driverId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid driver id",
+      });
+    }
+
+    try {
+      const result = await withMongoTransaction(async (session) => {
+        const userId = req.headers["userid"];
+
+        const driver = await DriverModel.findById(driverId).session(session);
+        if (!driver) {
+          throw {
+            code: 404,
+            message: "Driver not found",
+          };
+        }
+
+        const invoiceType = await PaymentTypeModel.findOne({
+          name: type as PaymentTypeEnum,
+        }).session(session);
+
+        if (!invoiceType) {
+          throw {
+            code: 404,
+            message: "Invoice type does not exist",
+          };
+        }
+
+        const targetQuota = driver?.downloadQuota?.find(
+          (quota: IDownloadQuota) =>
+            quota.type.toString() === invoiceType._id.toString()
+        );
+
+        if (!targetQuota || targetQuota.quota < 1) {
+          throw {
+            code: 400,
+            message: "No available quota for QR code download",
+          };
+        }
+
+        const updatedDriver = await DriverModel.findOneAndUpdate(
+          {
+            _id: driverId,
+            "downloadQuota.type": invoiceType._id,
+          },
+          { $inc: { "downloadQuota.$.quota": -1 } },
+          { new: true, runValidators: true, session }
+        );
+
+        if (!updatedDriver) {
+          throw {
+            code: 500,
+            message: "Failed to update download quota",
+          };
+        }
+
+        const downloadHistoryData = {
+          driver: driverId,
+          type: invoiceType._id,
+          processedBy: userId,
+        };
+
+        const downloadHistory = await DownloadHistoryModel.create(
+          [downloadHistoryData],
+          { session }
+        );
+
+        return updatedDriver;
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "QR code downloaded successfully",
+        data: result,
+      });
+    } catch (error: any) {
+      console.log("Error downloading QR code", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error downloading QR code",
+        error:
+          error.message ||
+          "Internal Server Error: Error updating QR code download quota",
+      });
+    }
   }
 }

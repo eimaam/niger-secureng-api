@@ -19,6 +19,7 @@ export interface IDriver extends Document {
   image: string;
   vehicleType: mongoose.Types.ObjectId;
   association: mongoose.Types.ObjectId;
+  associationNumber: string;
   email: string;
   phoneNumber: string;
   dob: Date;
@@ -42,7 +43,6 @@ export interface IDriver extends Document {
 
 export interface IGuarantor extends Document {
   fullName: string;
-  nin: string;
   phoneNumber: string;
   email: string;
   occupation: string;
@@ -52,7 +52,6 @@ export interface IGuarantor extends Document {
 
 export const GuarantorSchema: Schema = new Schema<IGuarantor>({
   fullName: { type: String, required: true, trim: true },
-  nin: { type: String, required: true, minlength: 11, maxlength: 11 },
   phoneNumber: { type: String, required: true, minlength: 11, maxlength: 11 },
   email: { type: String, required: false, lowercase: true, trim: true },
   occupation: { type: String, required: true },
@@ -100,6 +99,7 @@ const DriverSchema = new Schema<IDriver>(
       required: true,
       index: true,
     },
+    associationNumber: { type: String, required: true, unique: true, index: true },
     status: {
       type: String,
       enum: Object.values(AccountStatusEnum),
