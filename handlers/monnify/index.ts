@@ -860,7 +860,70 @@ export class Monnify {
             accountNumber: invoice[0]?.accountNumber,
             expiryDate: invoice[0]?.expiryDate,
           };
-        } else {
+        } else if (paymentType === PaymentTypeEnum.DRIVER_QR_CODE_PRINTING){
+          const driver = await DriverModel.findById(id)
+          .session(session);
+
+        if (!driver) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Driver not found" });
+        }
+
+        const invoiceType = await PaymentTypeModel.findOne(
+          {
+            name: PaymentTypeEnum.DRIVER_QR_CODE_PRINTING,
+          },
+          {
+            _id: true,
+            amount: true,
+          },
+          {
+            session,
+          }
+        );
+
+        if (!invoiceType) {
+          throw {
+            code: 404,
+            message: "Invoice type does not exist",
+          };
+        }
+
+        const invoiceData: IInvoiceData = {
+          type: invoiceType._id?.toString(),
+          amount: invoiceType?.amount,
+          description: "Driver QR Code Printing Fee",
+          customerEmail: driver?.email,
+          customerName: driver?.fullName,
+          metaData: {
+            driver: id,
+            paymentType: invoiceType._id,
+          },
+          createdBy: userId as string,
+        };
+
+        const invoice = await MonnifyService.createInvoice(
+          invoiceData,
+          session
+        );
+
+        if (!invoice) {
+          throw {
+            code: 500,
+            message: "Error creating invoice",
+          };
+        }
+
+        return {
+          amount: invoice[0]?.amount,
+          bankName: invoice[0]?.bankName,
+          accountName: invoice[0]?.accountName,
+          accountNumber: invoice[0]?.accountNumber,
+          expiryDate: invoice[0]?.expiryDate,
+        }; 
+        }
+        else {
           throw {
             code: 400,
             message: "Invalid payment type",

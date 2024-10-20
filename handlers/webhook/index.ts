@@ -322,8 +322,6 @@ export class Webhooks {
               existingUnit.code,
               totalVehiclesInSameUnit
             );
-            console.log({ identityCode });
-            console.log({ vehicleId });
             // generate licence registration and expiry date - 1 year from the current date
             const licenceRegistrationDate = generateYearDateRange().startDate;
             const licenceExpiryDate = generateYearDateRange().endDate;
@@ -903,6 +901,7 @@ export class Webhooks {
 
             return updatedVehicle;
           } else if (paymentType.name === PaymentTypeEnum.DRIVER_REGISTRATION) {
+
             const driverId = metaData?.driverId;
 
             if (!driverId || !isValidObjectId(driverId)) {
@@ -912,16 +911,96 @@ export class Webhooks {
               };
             }
 
-            // ensuring date data are free from manipulation by handling in the server
-            // and not from the client side > this is to prevent date manipulation by changing device date
-            const permitIssueDate = generateYearDateRange().startDate;
-            const permitExpiryDate = generateYearDateRange().endDate;
+            const driver = await DriverModel.findById(driverId).session(
+              session
+            );
+
+            if (!driver) {
+              throw {
+                code: 404,
+                message: "Driver Not Found",
+              };
+            }
 
             const updatedInvoice = await InvoiceService.updateInvoiceStatus(
               reference,
               InvoiceStatusEnum.PAID,
               session
             );
+
+            // for first time registration, we add one quota for driver permit printing, qr code printing
+            const permitPrintingPaymentType = await PaymentTypeModel.findOne({
+              name: PaymentTypeEnum.DRIVER_PERMIT_PRINTING,
+            },
+            {
+              _id: true,
+              amount: true,
+            },
+            {
+              session,
+            }
+          )
+
+            if (!permitPrintingPaymentType) {
+              throw {
+                code: 404,
+                message: "Driver Permit Printing Payment Type Not Found",
+              };
+            }
+
+            const qrCodePrinting = await PaymentTypeModel.findOne({
+              name: PaymentTypeEnum.DRIVER_QR_CODE_PRINTING,
+            }, 
+          {
+            _id: true,
+            amount: true,
+          },
+          {
+            session,
+          }
+          )
+
+          if (!qrCodePrinting) {
+            throw {
+              code: 404,
+              message: "Driver QR Code Printing Payment Type Not Found",
+            };
+          }
+
+          // ensuring date data are free from manipulation by handling in the server
+            // and not from the client side > this is to prevent date manipulation by changing device date
+            const permitIssueDate = generateYearDateRange().startDate;
+            const permitExpiryDate = generateYearDateRange().endDate;
+
+            // create permit data and activate driver
+            const updatedDriver = await DriverModel.findByIdAndUpdate(
+              driverId,
+              {
+                $set: {
+                  permit: {
+                    issueDate: permitIssueDate,
+                    expiryDate: permitExpiryDate,
+                  },
+                  downloadQuota: [
+                    { type: permitPrintingPaymentType._id, quota: 1 },
+                    { type: qrCodePrinting._id, quota: 1 },
+                  ],
+                  status: AccountStatusEnum.ACTIVE,
+                },
+              },
+              {
+                new: true,
+                runValidators: true,
+                session,
+              }
+            );
+
+            if (!updatedDriver) {
+              throw {
+                code: 500,
+                message: "Error updating driver permit",
+              };
+            }
 
             // fund beneficiaries
             await Webhooks.distributeFundsToBeneficiaries(
@@ -940,7 +1019,6 @@ export class Webhooks {
                   driver: driverId,
                   processedBy: updatedInvoice?.createdBy,
                   type: paymentType._id,
-
                   beneficiaries: formatBeneficiariesForTransaction(
                     beneficiariesWithPercentages
                   ),
@@ -955,40 +1033,6 @@ export class Webhooks {
                 message: "Error creating transaction",
               };
             }
-
-            // for first time registration, we add one quota for driver permit printing
-            const permitPrintingPaymentType = await PaymentTypeModel.findOne({
-              name: PaymentTypeEnum.DRIVER_PERMIT_PRINTING,
-            }).session(session);
-
-            if (!permitPrintingPaymentType) {
-              throw {
-                code: 404,
-                message: "Driver Permit Printing Payment Type Not Found",
-              };
-            }
-
-            // create permit data and activate driver
-            const updatedDriver = await DriverModel.findByIdAndUpdate(
-              driverId,
-              {
-                $set: {
-                  permit: {
-                    issueDate: permitIssueDate,
-                    expiryDate: permitExpiryDate,
-                  },
-                  downloadQuota: [
-                    { type: permitPrintingPaymentType._id, quota: 1 },
-                  ],
-                  status: AccountStatusEnum.ACTIVE,
-                },
-              },
-              {
-                new: true,
-                runValidators: true,
-                session,
-              }
-            );
 
             return updatedDriver;
           } else if (
