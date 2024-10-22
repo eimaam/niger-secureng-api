@@ -63,7 +63,7 @@ export class Monnify {
 
     try {
       const paymentDetail = {
-        amount: Number(amount),
+        amount: (Number(amount) - Number(Config.BANK_TRANSFER_FEE)),
         reference: generateUniqueReference(),
         narration: wallet.owner.toString(),
         destinationBankCode: bankCode,
@@ -143,7 +143,8 @@ export class Monnify {
             beneficiaryWallet.balance >= MIN_WITHDRAWAL_AMOUNT
           ) {
             return {
-              amount: beneficiaryWallet.balance,
+              // deduct bank transfer fee > will be added to the amount when debiting the beneficiary wallet balance to record trx history when webhook is received
+              amount: (beneficiaryWallet.balance - Number(Config.BANK_TRANSFER_FEE)),
               reference: generateUniqueReference(
                 beneficiaryWallet?.owner.toString()
               ),

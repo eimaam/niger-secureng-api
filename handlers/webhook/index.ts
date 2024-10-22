@@ -1417,7 +1417,7 @@ export class Webhooks {
           processedBy: superAdmin._id,
         };
 
-        const creditTransaction = await WalletService.debitEarningsWallet(
+        const debitTransaction = await WalletService.debitEarningsWallet(
           userAccount._id,
           data.amount as number,
           data.type,
@@ -1430,14 +1430,51 @@ export class Webhooks {
           session
         );
 
-        if (!creditTransaction) {
+        // debit bank charges (transfer fees) from the user's wallet & record the transaction as well
+        const bankCharges = Number(Config.BANK_TRANSFER_FEE) as number;
+        const SERVICE_FEE_ACCOUNT = await UserModel.findOne({
+          role: RoleName.Service
+        });
+
+        if (!SERVICE_FEE_ACCOUNT) {
+          throw {
+            code: 404,
+            message: "Service Fee Account not found",
+          };
+        }
+
+        const bankChargesData = {
+          type: WalletTransactionType.Fee,
+          from: userAccount._id,
+          to: SERVICE_FEE_ACCOUNT._id,
+          amount: bankCharges,
+          reference: generateUniqueReference(),
+          description: "Bank Transfer Fee",
+          status: PaymentStatusEnum.SUCCESSFUL,
+          processedBy: superAdmin._id,
+        };
+
+        const debitBankCharges = await WalletService.debitEarningsWallet(
+          userAccount._id,
+          bankChargesData.amount as number,
+          bankChargesData.type,
+          bankChargesData.from,
+          bankChargesData.to,
+          bankChargesData.reference,
+          bankChargesData.description as string,
+          bankChargesData.status,
+          bankChargesData.processedBy,
+          session
+        );
+
+        if (!debitTransaction || !debitBankCharges) {
           throw {
             code: 500,
             message: "Error updating wallet balance",
           };
         }
 
-        return creditTransaction.transaction[0];
+        return debitTransaction.transaction[0];
       });
 
       return res.status(200).json({

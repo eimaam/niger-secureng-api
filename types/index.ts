@@ -19,6 +19,7 @@ export enum RoleName {
   Admin = "admin",
   Government = "government",
   Stakeholder = "stakeholder",
+  Service = "service",
   LgaHead = "lga_head",
   SuperVendor = "super_vendor",
   Vendor = "vendor",
