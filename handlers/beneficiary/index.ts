@@ -1,7 +1,8 @@
+
 import { Request, Response } from "express";
 import { BeneficiaryModel, PaymentTypeModel } from "../../models/PaymentType";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
-import { body, header, validationResult } from "express-validator";
+import { body, validationResult } from "express-validator";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { RoleName } from "../../types";
 import { UserModel } from "../../models/User";
@@ -79,27 +80,39 @@ export class BeneficiaryController {
           paymentType: paymentTypeId,
         }).session(session);
 
-        // Calculate the total percentage including the new beneficiary
-        // if the new beneficiary is a vendor or super vendor, calculate the total percentage without the new beneficiary percentage
-        // this is cause we have several vendors and super vendors and they benefit from a payment they process which means they are not constant
-        // lets implement the logic
         let totalPercentage = 0;
-        if (user.role === RoleName.Vendor || user.role === RoleName.SuperVendor) {
-          totalPercentage = existingBeneficiaries.reduce((sum, beneficiary) => {
-            return sum + beneficiary.percentage;
-          }, 0);
-        } else {
-          totalPercentage = existingBeneficiaries.reduce((sum, beneficiary) => {
-            return sum + beneficiary.percentage;
-          }, percentage);
-        }
+
+// Filter out duplicate vendors or super vendors
+const uniqueBeneficiaries = existingBeneficiaries.filter(
+  (beneficiary, index, self) =>
+    beneficiary.role !== RoleName.Vendor &&
+    beneficiary.role !== RoleName.SuperVendor ||
+    index === self.findIndex(
+      (b) => b.role === beneficiary.role && 
+             (b.role === RoleName.Vendor || b.role === RoleName.SuperVendor)
+    )
+);
+
+// Calculate the total percentage excluding duplicate vendors and super vendors
+totalPercentage = uniqueBeneficiaries.reduce((sum, beneficiary) => {
+  return sum + beneficiary.percentage;
+}, 0);
 
 
-        if (totalPercentage > 100) {
-          throw new Error(
-            "Total percentage of beneficiaries cannot exceed 100%"
-          );
-        }
+if (user.role !== RoleName.Vendor && user.role !== RoleName.SuperVendor) {
+
+// Add the new beneficiary's percentage
+totalPercentage += percentage;
+
+}
+
+if (totalPercentage > 100) {
+  throw new Error(
+    "Total percentage of beneficiaries cannot exceed 100%"
+  );
+}
+
+
 
         // Create the new beneficiary
         const newBeneficiary = new BeneficiaryModel({
@@ -184,12 +197,10 @@ export class BeneficiaryController {
       return res.status(200).json({
         success: true,
         data: filteredBeneficiaryList,
-        pagination: {
           totalBeneficiaries,
           totalPages,
           currentPage: page,
           limit,
-        },
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
@@ -319,37 +330,56 @@ export class BeneficiaryController {
     }
   }
 
+  static async removeBeneficiaryFromPaymentType(req: Request, res: Response) {
+    
+    const { id } = req.params;
+
+    try {
+      
+      const beneficiary = await BeneficiaryModel.findByIdAndUpdate(id, {paymentType: null});
+
+      if (!beneficiary) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Beneficiary not found" });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Beneficiary removed from payment type successfully",
+        data: beneficiary,
+      });
+
+    } catch (error:any) {
+      console.log("Remove beneficiary from payment type error: ", error);
+      return res.status(500).json({ success: false, message: error.message });
+      
+    }
+
+
+  }
+
   // Delete a beneficiary
   static async deleteBeneficiary(req: Request, res: Response) {
     const { id } = req.params;
 
     try {
-      const result = await withMongoTransaction(async (session) => {
-        const existingPaymentType = await PaymentTypeModel.findOne({
-          beneficiaries: id,
-        }).session(session);
 
-        if (existingPaymentType) {
-          throw new Error(
-            "Beneficiary cannot be deleted as it is associated with a payment type. Remove the beneficiary from the payment type first."
-          );
-        }
+      const deletedBeneficiary = await BeneficiaryModel.findByIdAndDelete(id);
 
-        // Find and delete the beneficiary
-        const deletedBeneficiary = await BeneficiaryModel.findByIdAndDelete(
-          id
-        ).session(session);
-        if (!deletedBeneficiary) {
-          throw new Error("The beneficiary could not be deleted");
-        }
+      if (!deletedBeneficiary) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Beneficiary not found" });
+      }
 
-        return deletedBeneficiary;
-      });
+
+      
 
       return res.status(200).json({
         success: true,
         message: "Beneficiary deleted successfully",
-        data: result,
+        data: deletedBeneficiary,
       });
     } catch (error: any) {
       console.log("Delete beneficiary error: ", error);

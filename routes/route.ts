@@ -617,6 +617,12 @@ route.get(
   checkRole([RoleName.Government]),
   BeneficiaryController.getAllBeneficiaries
 );
+// remove beneficiary from payment type
+route.post(
+  "/beneficiaries/remove/:id",
+  checkRole(),
+  BeneficiaryController.removeBeneficiaryFromPaymentType
+)
 route.delete("/beneficiaries/:id", checkRole(), BeneficiaryController.deleteBeneficiary);
 
 // payment category
