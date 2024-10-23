@@ -12,14 +12,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BEXIL-Group-HQ/niger-secureng-backend.git"
+    "url": "git+https://github.com/BEXIL-Group-HQ/niger-secureng-api.git"
   },
   "author": "Imam Dahir Dan-Azumi",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/BEXIL-Group-HQ/niger-secureng-backend/issues"
+    "url": "https://github.com/BEXIL-Group-HQ/niger-secureng-api/issues"
   },
-  "homepage": "https://github.com/BEXIL-Group-HQ/niger-secureng-backend#readme",
+  "homepage": "https://github.com/BEXIL-Group-HQ/niger-secureng-api#readme",
   "dependencies": {
     "@google-cloud/storage": "^7.12.1",
     "@types/bcrypt": "^5.0.2",
