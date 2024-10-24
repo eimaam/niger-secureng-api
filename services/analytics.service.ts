@@ -12,13 +12,9 @@ import {
   VehicleTypeEnum,
 } from "../types";
 import { getDateRange } from "../utils";
-import PaymentCategory from "../handlers/payment-category";
-import {
-  PaymentCategoryEnum,
-  PaymentCategoryModel,
-} from "../models/PaymentCategory";
 import { Vehicle } from "../models/Vehicle";
 import InvoiceModel, { InvoiceStatusEnum } from "../models/Invoice";
+import { PaymentTypeModel } from "../models/PaymentType";
 
 export class AnalyticsService {
   // Assuming transactions is an array of all transactions in the system
@@ -466,13 +462,25 @@ export class AnalyticsService {
     let totalTransactions = 0;
     let dataPoints: any[] = [];
 
-    const taxPaymentCategory = await PaymentCategoryModel.findOne({
-      name: PaymentCategoryEnum.TaxPayment,
-    });
+    // get the list of tax payment types to filter by and pass the ids to the query aggregation
+    const taxPaymentTypes = await PaymentTypeModel.find({
+      name: { $in: [
+      PaymentTypeEnum.TRICYCLE,
+      PaymentTypeEnum.OKADA,
+      PaymentTypeEnum.JEGA,
+      PaymentTypeEnum.OPEN_BODY,
+      PaymentTypeEnum.SULEJA_TRICYCLE,
+      PaymentTypeEnum.SULEJA_OKADA,
+      PaymentTypeEnum.SULEJA_JEGA,
+      PaymentTypeEnum.TAFA_TRICYCLE,
+      PaymentTypeEnum.TAFA_OKADA,
+      PaymentTypeEnum.TAXI
+      ] }
+    }).select('_id');
 
-    if (!taxPaymentCategory) {
-      throw new Error("Tax payment category not found");
-    }
+    const taxPaymentTypeIds = taxPaymentTypes.map(type => type._id);
+
+    
     try {
       const { startDate, endDate } = getDateRange(
         filter,
@@ -488,7 +496,7 @@ export class AnalyticsService {
               $lt: endDate,
             },
             status: PaymentStatusEnum.SUCCESSFUL,
-            category: taxPaymentCategory._id,
+            type: { $in: taxPaymentTypeIds },
           },
         },
         {
