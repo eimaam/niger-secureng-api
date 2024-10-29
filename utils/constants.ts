@@ -6,11 +6,17 @@ export const unauthenticatedRoutes: (string | RegExp)[] = [
   "/api/v1/webhook/funding",
   "/api/v1/webhook/disbursement",
   /^\/api\/v1\/driver\/qr\/[a-fA-F0-9]{24}$/,
+  // vehicles
   /^\/api\/v1\/vehicle\/qr\/[a-fA-F0-9]{24}$/,
   /^\/api\/v1\/vehicle\/qr\/public\/[a-fA-F0-9]{24}$/,
   /^\/api\/v1\/vehicle\/qr\/([a-fA-F0-9]{24}|[0-9A-Z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, 
   /^\/api\/v1\/vehicle\/qr\/public\/([a-fA-F0-9]{24}|[0-9A-Z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, 
   /^\/api\/v1\/vehicle\/qr\/transactions\/([a-fA-F0-9]{24}|[0-9A-Z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, 
+  // drivers
+  /^\/api\/v1\/driver\/qr\/[a-fA-F0-9]{24}$/,
+  /^\/api\/v1\/driver\/qr\/public\/[a-fA-F0-9]{24}$/,
+  /^\/api\/v1\/driver\/qr\/([a-fA-F0-9]{24}|[0-9A-Z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, 
+  /^\/api\/v1\/driver\/qr\/public\/([a-fA-F0-9]{24}|[0-9A-Z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, 
 ];
 
 export const dates = {

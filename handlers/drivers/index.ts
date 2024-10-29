@@ -13,7 +13,7 @@ import { body, validationResult } from "express-validator";
 import { uploadImage } from "../../services/googlecloud.service";
 import { UserModel } from "../../models/User";
 import { AssociationModel } from "../../models/Association";
-import { convertImageToBase64 } from "../../utils";
+import { convertImageToBase64, hasExpired } from "../../utils";
 import { BUCKET_STORAGE_LOCATION } from "../../utils/config";
 import { isValidObjectId } from "mongoose";
 import { IDownloadQuota } from "../../models/Vehicle";
@@ -291,6 +291,79 @@ export class Drivers {
       return res.status(500).json({
         success: false,
         message: "Error retrieving driver",
+        error: error.message,
+      });
+    }
+  }
+
+  static async getDataByQRCode(req: Request, res: Response) {
+    const { driverId } = req.params;
+
+    body("driverId")
+      .notEmpty()
+      .withMessage("Driver ID is required")
+      .isString()
+      .withMessage("Invalid Driver ID")
+      .run(req);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+        errors: errors.array(),
+      });
+    }
+
+    try {
+      let driver;
+
+      if (!isValidObjectId(driverId)) {
+        driver = await DriverModel.findOne({ qrCodeId: driverId })
+          .populate({
+            path: "association",
+            select: "name code",
+          })
+          .populate({
+            path: "vehicleType",
+            select: "name",
+          })
+
+      } else {
+        driver = await DriverModel.findById(driverId)
+        .populate({
+          path: "association",
+          select: "name code",
+        })
+        .populate({
+          path: "vehicleType",
+          select: "name",
+        })
+      }
+
+      if (!driver) {
+        return res.status(404).json({
+          success: false,
+          message: "Driver not found",
+        });
+      }
+
+      const PERMIT_EXPIRED = hasExpired(driver.permit.expiryDate);
+      const PERMIT_EXPIRY_DATE = driver.permit.expiryDate;
+
+      return res.status(200).json({
+        success: true,
+        message: "Driver data fetched successfully",
+        data: {
+          driver,
+          permitExpired: PERMIT_EXPIRED,
+          permitExpiryDate: PERMIT_EXPIRY_DATE,
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching Driver data",
         error: error.message,
       });
     }
