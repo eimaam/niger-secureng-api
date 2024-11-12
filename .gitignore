@@ -5,5 +5,4 @@ node_modules
 .vercel
 
 # TODO: remove after wrapping up seeding
-data
-migrate
+migration

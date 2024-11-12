@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { UserModel } from "../../models/User";
-import { IUser } from "../../types";
+import { AccountStatusEnum, IUser } from "../../types";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
@@ -33,6 +33,16 @@ export class Auth {
           throw {
             code: 400,
             message: "Invalid email or password",
+          };
+        }
+        
+        // return error if user account is not active or is suspended
+        if (
+          user.status === AccountStatusEnum.SUSPENDED
+        ) {
+          throw {
+            code: 400,
+            message: "Account is suspended or inactive",
           };
         }
 
