@@ -58,6 +58,86 @@ export class WalletService {
     }
   }
 
+  static async getWalletHeldBalance(
+    walletId: string,
+    walletType: WalletTypeEnum,
+    session?: ClientSession
+  ) {
+    const mongoSession = session ?? null;
+    const wallet =
+      walletType === WalletTypeEnum.EARNINGS
+        ? await EarningsWalletModel.findById(walletId).session(mongoSession)
+        : await DepositWalletModel.findById(walletId).session(mongoSession);
+
+    return wallet?.heldBalance;
+  }
+
+  static async getAvailableBalance(
+    walletId: string,
+    walletType: WalletTypeEnum,
+    session?: ClientSession
+  ) {
+    const mongoSession = session ?? null;
+    const wallet =
+      walletType === WalletTypeEnum.EARNINGS
+        ? await EarningsWalletModel.findById(walletId).session(mongoSession)
+        : await DepositWalletModel.findById(walletId).session(mongoSession);
+
+        const availableBalance = wallet?.balance - (wallet?.heldBalance ?? 0);
+
+        return availableBalance;
+  }
+
+  static async holdWalletBalance(
+    walletId: string,
+    amount: number, 
+    walletType: WalletTypeEnum,
+    session?: ClientSession
+  ) {
+    const mongoSession = session ?? null;
+    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
+      ? EarningsWalletModel
+      : DepositWalletModel;
+
+    const wallet = await WalletModel.findByIdAndUpdate(
+      walletId,
+      { $inc: { heldBalance: amount } },
+      { session: mongoSession, new: true, runValidators: true }
+    );
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+
+    const heldBalance = wallet.heldBalance ?? 0;
+
+    return heldBalance;
+  }
+
+  static async releaseHeldWalletBalance(
+    walletId: mongoose.Types.ObjectId | string,
+    amount: number,
+    walletType: WalletTypeEnum,
+    session?: ClientSession
+  ) {
+    const mongoSession = session ?? null;
+    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
+      ? EarningsWalletModel
+      : DepositWalletModel;
+
+    const wallet = await WalletModel.findByIdAndUpdate(
+      walletId,
+      { $inc: { heldBalance: -amount } },
+      { session: mongoSession, new: true, runValidators: true }
+    );
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+
+    return wallet;
+  }
+
   static async getWalletByOwnerId(
     userId: mongoose.Types.ObjectId | string,
     type: WalletTypeEnum,

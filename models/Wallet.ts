@@ -12,13 +12,15 @@ export interface IWallet extends Document {
    */
   owner: mongoose.Types.ObjectId;
   balance: number;
+  heldBalance: number;
   type: WalletTypeEnum;
 }
 
 const DepositWalletSchema = new Schema<IWallet>(
   {
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     balance: { type: Number, default: 0, required: true },
+    heldBalance: { type: Number, default: 0, required: true },
     type: { type: String, enum: Object.values(WalletTypeEnum), required: true, default: WalletTypeEnum.DEPOSIT, index: true },
   },
   { timestamps: true }
@@ -31,8 +33,9 @@ const DepositWalletModel =
 // Earnings Wallet Schema
 const EarningsWalletSchema = new Schema<IWallet>(
   {
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     balance: { type: Number, default: 0, required: true },
+    heldBalance: { type: Number, default: 0, required: true },
     type: { type: String, enum: Object.values(WalletTypeEnum), required: true, default: WalletTypeEnum.EARNINGS, index: true },
   },
   { timestamps: true }

@@ -180,29 +180,31 @@ if (totalPercentage > 100) {
         .limit(limit)
         .exec();
 
-
         // filter & return one instance only for each beneficiary based on _id field
-        const filteredBeneficiaryList = result.reduce((acc: any, current: any) => {
-          const x = acc.find((item: any) => item.user._id === current.user._id);
-          if (!x) {
-            return acc.concat([current]);
-          } else {
-            return acc;
-          }
-        }
-        , []);
+        // const filteredBeneficiaryList = result.reduce((acc: any, current: any) => {
+        //   console.log({ current })
+        //   console.log({ acc })
+        //   const x = acc.find((item: any) => item?.user?._id === current?.user?._id);
+        //   if (!x) {
+        //     return acc.concat([current]);
+        //   } else {
+        //     return acc;
+        //   }
+        // }
+        // , []);
 
       const totalPages = Math.ceil(totalBeneficiaries / limit);
 
       return res.status(200).json({
         success: true,
-        data: filteredBeneficiaryList,
+        data: result,
           totalBeneficiaries,
           totalPages,
           currentPage: page,
           limit,
       });
     } catch (error: any) {
+      console.log("Error ==>", error)
       return res.status(500).json({ success: false, message: error.message });
     }
   }

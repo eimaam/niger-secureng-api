@@ -8,6 +8,7 @@ export enum WalletTransactionType {
   Withdrawal = "withdrawal",
   Refund = "refund",
   Settlement = "settlement",
+  Disbursement = "disbursement",
   Fee = "fee",
   Transfer = "transfer",
 }

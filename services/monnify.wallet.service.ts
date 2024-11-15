@@ -50,7 +50,7 @@ export class MonnifyService {
    * @param fullName The full name of the user
    * @param email Email of the user
    * @param limitProfileCode monnify account limit profile code
-   * @returns
+   * @returns The reserved accounts details with an "accounts" field as array of the various bank accounts generated
    */
   static async reserveAccount(
     userId: string,

@@ -32,6 +32,7 @@ import { TransactionModel } from "../../models/Transaction";
 import { DriverModel } from "../../models/Driver";
 import { InvoiceService } from "../../services/invoice.service";
 import { VehicleService } from "../../services/vehicle.service";
+import { WalletTypeEnum } from "../../models/Wallet";
 
 const formatBeneficiariesForTransaction = (
   beneficiaries: {
@@ -1343,7 +1344,7 @@ export class Webhooks {
     // Verify transaction was successful
     if (status === MonnifyDisbursementTransferStatus.FAILED) {
       const data = {
-        type: WalletTransactionType.Commision,
+        type: WalletTransactionType.Disbursement,
         from: superAdmin._id,
         to: beneficiaryId,
         amount,
@@ -1407,7 +1408,7 @@ export class Webhooks {
         }
 
         const data = {
-          type: WalletTransactionType.Commision,
+          type: WalletTransactionType.Disbursement,
           from: userAccount._id,
           to: userAccount._id,
           amount: Number(amount),
@@ -1431,7 +1432,7 @@ export class Webhooks {
         );
 
         // debit bank charges (transfer fees) from the user's wallet & record the transaction as well
-        const bankCharges = Number(Config.BANK_TRANSFER_FEE) as number;
+        const BANK_TRANSFER_FEE = Number(Config.BANK_TRANSFER_FEE) as number;
         const SERVICE_FEE_ACCOUNT = await UserModel.findOne({
           role: RoleName.Service
         });
@@ -1447,7 +1448,7 @@ export class Webhooks {
           type: WalletTransactionType.Fee,
           from: userAccount._id,
           to: SERVICE_FEE_ACCOUNT._id,
-          amount: bankCharges,
+          amount: BANK_TRANSFER_FEE,
           reference: generateUniqueReference(),
           description: "Bank Transfer Fee",
           status: PaymentStatusEnum.SUCCESSFUL,
@@ -1467,12 +1468,33 @@ export class Webhooks {
           session
         );
 
-        if (!debitTransaction || !debitBankCharges) {
+        const userWallet = (await WalletService.getWalletByOwnerId(
+          userAccount._id,
+          WalletTypeEnum.EARNINGS,
+          session
+        ));
+
+        if (!userWallet) {
+          throw {
+            code: 404,
+            message: "User Wallet not found",
+          };
+        }
+
+        const updateHeldBalance = await WalletService.releaseHeldWalletBalance(
+          (userWallet as any)._id.toString(),
+          (data.amount as number) + BANK_TRANSFER_FEE,
+          WalletTypeEnum.EARNINGS,
+          session
+        );
+
+        if (!updateHeldBalance || !debitTransaction || !debitBankCharges) {
           throw {
             code: 500,
             message: "Error updating wallet balance",
           };
         }
+
 
         return debitTransaction.transaction[0];
       });
