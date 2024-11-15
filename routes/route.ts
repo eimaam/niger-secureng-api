@@ -236,7 +236,7 @@ route.post('/driver',  checkRole([
 ]), 
 upload.single('image'),
 Drivers.registerDriver);
-route.get("/driver/qr/:driverId", Drivers.getDataByQRCode);
+route.get("/drivers/qr/:driverId", Drivers.getDataByQRCode);
 
 
 // download
