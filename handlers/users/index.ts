@@ -60,7 +60,6 @@ export class User {
 
         if (
           role === RoleName.SuperAdmin ||
-          role === RoleName.Stakeholder ||
           role === RoleName.Government ||
           role === RoleName.Consultant
         ) {
