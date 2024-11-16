@@ -96,7 +96,7 @@ export class Invoices {
           if ((invoice.metaData as any)?.driverId) {
             const driver = await DriverModel.findById(
               (invoice.metaData as any)?.driverId
-            ).select("fullName email phoneNumber nin");
+            ).select("fullName email phoneNumber nin associationNumber");
             (invoice.metaData as any).driver = driver;
           }
         }

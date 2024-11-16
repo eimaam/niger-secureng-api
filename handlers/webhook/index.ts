@@ -902,7 +902,6 @@ export class Webhooks {
 
             return updatedVehicle;
           } else if (paymentType.name === PaymentTypeEnum.DRIVER_REGISTRATION) {
-
             const driverId = metaData?.driverId;
 
             if (!driverId || !isValidObjectId(driverId)) {
@@ -930,17 +929,18 @@ export class Webhooks {
             );
 
             // for first time registration, we add one quota for driver permit printing, qr code printing
-            const permitPrintingPaymentType = await PaymentTypeModel.findOne({
-              name: PaymentTypeEnum.DRIVER_PERMIT_PRINTING,
-            },
-            {
-              _id: true,
-              amount: true,
-            },
-            {
-              session,
-            }
-          )
+            const permitPrintingPaymentType = await PaymentTypeModel.findOne(
+              {
+                name: PaymentTypeEnum.DRIVER_PERMIT_PRINTING,
+              },
+              {
+                _id: true,
+                amount: true,
+              },
+              {
+                session,
+              }
+            );
 
             if (!permitPrintingPaymentType) {
               throw {
@@ -949,26 +949,27 @@ export class Webhooks {
               };
             }
 
-            const qrCodePrinting = await PaymentTypeModel.findOne({
-              name: PaymentTypeEnum.DRIVER_QR_CODE_PRINTING,
-            }, 
-          {
-            _id: true,
-            amount: true,
-          },
-          {
-            session,
-          }
-          )
+            const qrCodePrinting = await PaymentTypeModel.findOne(
+              {
+                name: PaymentTypeEnum.DRIVER_QR_CODE_PRINTING,
+              },
+              {
+                _id: true,
+                amount: true,
+              },
+              {
+                session,
+              }
+            );
 
-          if (!qrCodePrinting) {
-            throw {
-              code: 404,
-              message: "Driver QR Code Printing Payment Type Not Found",
-            };
-          }
+            if (!qrCodePrinting) {
+              throw {
+                code: 404,
+                message: "Driver QR Code Printing Payment Type Not Found",
+              };
+            }
 
-          // ensuring date data are free from manipulation by handling in the server
+            // ensuring date data are free from manipulation by handling in the server
             // and not from the client side > this is to prevent date manipulation by changing device date
             const permitIssueDate = generateYearDateRange().startDate;
             const permitExpiryDate = generateYearDateRange().endDate;
@@ -1175,12 +1176,10 @@ export class Webhooks {
               session
             );
 
-            // get driver's permit issue and expiry date
-            const permitExpiryDate = driver.permit?.expiryDate;
-
             // renew permit by adding 1 year to the expiry date
-            const newExpiryDate = new Date(permitExpiryDate);
-            newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+            const currentDate = new Date();
+            const newExpiryDate = new Date(currentDate);
+            newExpiryDate.setFullYear(currentDate.getFullYear() + 1);
 
             const PERMIT_PRINTING = await PaymentTypeModel.findOne({
               name: PaymentTypeEnum.DRIVER_PERMIT_PRINTING,
@@ -1434,7 +1433,7 @@ export class Webhooks {
         // debit bank charges (transfer fees) from the user's wallet & record the transaction as well
         const BANK_TRANSFER_FEE = Number(Config.BANK_TRANSFER_FEE) as number;
         const SERVICE_FEE_ACCOUNT = await UserModel.findOne({
-          role: RoleName.Service
+          role: RoleName.Service,
         });
 
         if (!SERVICE_FEE_ACCOUNT) {
@@ -1468,11 +1467,11 @@ export class Webhooks {
           session
         );
 
-        const userWallet = (await WalletService.getWalletByOwnerId(
+        const userWallet = await WalletService.getWalletByOwnerId(
           userAccount._id,
           WalletTypeEnum.EARNINGS,
           session
-        ));
+        );
 
         if (!userWallet) {
           throw {
@@ -1494,7 +1493,6 @@ export class Webhooks {
             message: "Error updating wallet balance",
           };
         }
-
 
         return debitTransaction.transaction[0];
       });

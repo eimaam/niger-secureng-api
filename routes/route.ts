@@ -462,6 +462,10 @@ route.get(
   WalletController.transactionHistory
 );
 route.get(
+  "/wallet/transactions/disbursement",
+  WalletController.getDisbursementTransactionHistory
+);
+route.get(
   "/wallet/:walletId",
   checkRole([RoleName.WalletAdmin]),
   WalletController.getById

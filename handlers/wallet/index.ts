@@ -18,7 +18,8 @@ import { WalletService } from "../../services/wallet.service";
 import { Config } from "../../utils/config";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { generateUniqueReference } from "../../utils";
-import { isValidObjectId } from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
+import { header, query, validationResult } from "express-validator";
 
 export class WalletController {
   static async getAll(req: Request, res: Response) {
@@ -421,6 +422,105 @@ export class WalletController {
       return res.status(400).json({
         success: false,
         message: "There was a problem fetching transaction history",
+        error: error.message,
+      });
+    }
+  }
+
+  static async getDisbursementTransactionHistory(req: Request, res: Response) {
+    const userId = req.headers["userid"] as string;
+
+    const { amount } = req.query;
+
+    // validate via express-validator
+    header("userid").isMongoId().withMessage("Invalid user ID");
+    query("amount").optional().isNumeric().withMessage("Invalid amount");
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()?.[0].msg,
+        errors: errors.array(),
+      });
+    }
+
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const page = parseInt(req.query.page as string) || DEFAULT_QUERY_PAGE;
+    const limit = parseInt(req.query.limit as string) || DEFAULT_QUERY_LIMIT;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    try {
+      const dbQuery: any = {
+        type: WalletTransactionType.Disbursement,
+      };
+
+      if (user.role === RoleName.SuperAdmin) {
+      }
+
+      // Define the 'from', "to" & 'processedBy' value based on role
+      if (user.role === RoleName.SuperVendor) {
+        dbQuery["$or"] = [
+          { from: new mongoose.Types.ObjectId(userId) },
+          { to: new mongoose.Types.ObjectId(userId) },
+          { processedBy: new mongoose.Types.ObjectId(userId) },
+        ];
+      }
+
+      if (
+        user.role !== RoleName.SuperAdmin &&
+        user.role !== RoleName.SuperVendor
+      ) {
+        dbQuery["to"] = new mongoose.Types.ObjectId(userId);
+      }
+
+      if (amount) {
+        dbQuery["amount"] = parseFloat(amount as string);
+      }
+
+      const transactions = await WalletTransactionModel.find(dbQuery)
+        .populate({
+          path: "from",
+          select: "fullName role email",
+        })
+        .populate({
+          path: "to",
+          select: "fullName role email phoneNumber",
+        })
+        .populate({
+          path: "processedBy",
+          select: "fullName role email",
+        })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const totalTransactions = await WalletTransactionModel.countDocuments(
+        dbQuery
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Disbursement transaction history fetched successfully",
+        page,
+        totalPages: Math.ceil(totalTransactions / limit),
+        total: totalTransactions,
+        data: transactions,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "There was a problem fetching disbursement transaction history",
         error: error.message,
       });
     }
