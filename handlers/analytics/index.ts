@@ -968,6 +968,112 @@ export class Analytics {
     }
   }
 
+  static async stakeholder(req: Request, res: Response) {
+    const { filter = AnalyticsFilterRange.DAILY, year, status } = req.query;
+    const userId = req.headers["userid"] as string;
+
+    try {
+      const { startDate, endDate } = getDateRange(
+        filter as AnalyticsFilterRange,
+        parseInt(year as string)
+      );
+
+      const result = await withMongoTransaction(async (session) => {
+        const matchConditions: any = {
+          date: { $gte: startDate, $lte: endDate },
+          "stakeholder.userId": userId,
+        };
+
+        const stakeholder = await UserModel.findById(userId).session(
+          session
+        );
+        if (!stakeholder) {
+          throw {
+            status: 404,
+            message: "Stakeholder not found",
+          };
+        }
+        const stakeholderId: string = stakeholder._id as string;
+
+        const wallet = await WalletService.getWalletByOwnerId(
+          userId,
+          WalletTypeEnum.EARNINGS,
+          session
+        );
+
+        // profit made by the stakeholder today
+        const overallTotalTransactionsAndRevenueToday =
+          await AnalyticsService.getOverallUserInvolvedTransactionsAndRevenue({
+            filter: AnalyticsFilterRange.DAILY,
+            userId,
+            session,
+          });
+
+        // overall total transactions and revenue generated till date
+        const overallTransactionsAndRevenueTillDate =
+          await AnalyticsService.getOverallUserInvolvedTransactionsAndRevenue({
+            filter: AnalyticsFilterRange.OVERALL,
+            userId,
+            session,
+          });
+
+        const overallStakeholderRevenueTillDate =
+          await AnalyticsService.getOverallTotalTransactionsAndRevenueByUserId({
+            userId,
+            session,
+          });
+
+        const filteredStakeholderRevenue =
+          await AnalyticsService.getOverallTotalTransactionsAndRevenueByUserId({
+            userId,
+            filter: filter as AnalyticsFilterRange,
+            year: parseInt(year as string),
+            session,
+          });
+
+      return {
+        walletBalance: wallet?.balance || 0,
+        today: {
+          revenueToday: overallTotalTransactionsAndRevenueToday.totalAmount,
+          totalTransactionsToday:
+            overallTotalTransactionsAndRevenueToday.totalTransactions,
+        },
+        overallRevenueGenerated: {
+          totalTransactions:
+            overallTransactionsAndRevenueTillDate.totalTransactions,
+          totalRevenue: overallTransactionsAndRevenueTillDate.totalAmount,
+          dataPoints: overallTransactionsAndRevenueTillDate.dataPoints,
+        },
+        overallStakeholderRevenue: {
+          totalRevenue: overallStakeholderRevenueTillDate.totalAmount,
+          totalTransactions: overallStakeholderRevenueTillDate.totalTransactions,
+        },
+        filteredStakeholderRevenue: {
+          revenue: filteredStakeholderRevenue.totalAmount,
+          transactions: filteredStakeholderRevenue.totalTransactions,
+          dataPoints: filteredStakeholderRevenue.dataPoints,
+        },
+      }
+        
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Stakeholder analytics fetched successfully",
+        data: result,
+      });
+
+    } catch (error:any) {
+      return res.status(500).json({
+        success: false,
+        message: "An error occurred",
+        error: error.message || error,
+      });
+    }
+
+
+  }
+
   static async superVendor(req: Request, res: Response) {
     const { filter = AnalyticsFilterRange.DAILY, year, status } = req.query;
     const userId = req.headers["userid"] as string;

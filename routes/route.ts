@@ -777,6 +777,11 @@ route.get(
   checkRole([RoleName.Association]),
   Analytics.association
 );
+route.get(
+  "/analytics/stakeholder",
+  checkRole([RoleName.Stakeholder]),
+  Analytics.stakeholder
+)
 // vehicle analytics
 route.get(
   "/analytics/vehicle",
