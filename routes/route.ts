@@ -63,6 +63,7 @@ route.post(
   "/vehicle",
   checkRole([
     RoleName.GeneralAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
@@ -75,6 +76,7 @@ route.post(
   checkRole([
     RoleName.GeneralAdmin,
     RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
   Vehicles.registerExistingOwner
@@ -90,6 +92,7 @@ route.get(
   checkRole([
     RoleName.GeneralAdmin,
     RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
   Vehicles.getById
@@ -110,6 +113,7 @@ route.get(
     RoleName.GeneralAdmin,
     RoleName.VehicleAdmin,
     RoleName.PrintingAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
     RoleName.Association,
   ]),
@@ -122,6 +126,7 @@ route.get(
     RoleName.GeneralAdmin,
     RoleName.TransferAdmin,
     RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
     RoleName.Vendor,
   ]),
@@ -177,6 +182,7 @@ route.get(
     RoleName.Vendor,
     RoleName.VehicleAdmin,
     RoleName.PrintingAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
   UnregisteredVehicles.fetchUnregisteredVehicles
@@ -189,6 +195,7 @@ route.get(
     RoleName.GeneralAdmin,
     RoleName.VehicleAdmin,
     RoleName.PrintingAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
   UnregisteredVehicles.getUnregisteredVehicleByChasssisNumber
@@ -232,6 +239,7 @@ route.post(
 route.post('/driver',  checkRole([
   RoleName.GeneralAdmin,
   RoleName.VehicleAdmin,
+  RoleName.RegistrationAdmin,
   RoleName.VehicleRegistrationAdmin,
 ]), 
 upload.single('image'),
@@ -241,7 +249,7 @@ route.get("/drivers/qr/:driverId", Drivers.getDataByQRCode);
 
 // download
 route.get("/downloads", checkRole([]), DownloadHistory.getAll);
-route.post("/vehicles/quota", async (req: Request, res: Response) => {
+route.post("/vehicles/quota", checkRole([]), async (req: Request, res: Response) => {
   const { identityCode, quota, type } = req.body;
 
   // validate via express valdator
@@ -333,6 +341,7 @@ route.get(
     RoleName.Government,
     RoleName.GeneralAdmin,
     RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
     RoleName.SuperAdmin,
     RoleName.Association,
@@ -347,6 +356,7 @@ route.get(
     RoleName.GeneralAdmin,
     RoleName.TransferAdmin,
     RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.DriverRegistrationAdmin,
   ]),
   Drivers.getDriverById
@@ -363,7 +373,7 @@ route.patch(
   ]),
   Drivers.updateDriver
 );
-route.delete("/drivers/:id", checkRole(), Drivers.deleteDriver);
+route.delete("/drivers/:id", checkRole([]), Drivers.deleteDriver);
 route.post(
   "/driver/download/permit/:id",
   checkRole([RoleName.PrintingAdmin]),
@@ -555,6 +565,7 @@ route.post(
     RoleName.InvoiceAdmin,
     RoleName.VehicleAdmin,
     RoleName.PrintingAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.VehicleRegistrationAdmin,
   ]),
   Monnify.generateNewInvoice
@@ -602,7 +613,11 @@ route.delete("/issuable/:id", checkRole(), Issuables.delete);
 route.post("/payment-type", checkRole(), PaymentTypes.create);
 route.get(
   "/payment-types",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin]),
+  checkRole([RoleName.Government, RoleName.GeneralAdmin,
+    RoleName.RegistrationAdmin,
+
+
+  ]),
   PaymentTypes.getAll
 );
 route.patch("/payment-type/:id", checkRole(), PaymentTypes.update);
@@ -631,7 +646,11 @@ route.delete("/beneficiaries/:id", checkRole(), BeneficiaryController.deleteBene
 route.post("/payment-category", checkRole(), PaymentCategory.create);
 route.get(
   "/payment-categories",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin]),
+  checkRole([RoleName.Government, RoleName.GeneralAdmin, 
+
+    RoleName.RegistrationAdmin,
+
+  ]),
   PaymentCategory.getAll
 );
 
@@ -785,12 +804,16 @@ route.get(
 // vehicle analytics
 route.get(
   "/analytics/vehicle",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin]),
+  checkRole([RoleName.Government, RoleName.GeneralAdmin, 
+    RoleName.RegistrationAdmin,
+  ]),
   Analytics.vehicles
 );
 route.get(
   "/analytics/invoice",
-  checkRole([RoleName.GeneralAdmin, RoleName.PrintingAdmin]),
+  checkRole([RoleName.GeneralAdmin, RoleName.PrintingAdmin, 
+    RoleName.RegistrationAdmin,
+  ]),
   Analytics.invoices
 );
 route.get(
