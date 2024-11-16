@@ -5,6 +5,7 @@ export const authString: string = Buffer.from(
 
 
 export const Config = {
+  NODE_ENV: process.env.NODE_ENV,
   MAX_TAX_PAYMENT_DAYS: process.env.MAX_TAX_PAYMENT_DAYS,
   MIN_VENDOR_DEPOSIT: process.env.MIN_VENDOR_DEPOSIT,
   MAX_VENDOR_DEPOSIT: process.env.MAX_VENDOR_DEPOSIT,

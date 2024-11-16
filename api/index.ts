@@ -31,7 +31,9 @@ const apiLimiter = rateLimit({
   standardHeaders: API_RATE_LIMIT.STANDARD_HEADERS,
   legacyHeaders: API_RATE_LIMIT.LEGACY_HEADERS,
 });
-app.use(apiLimiter);
+app.use(
+  Config.NODE_ENV === "production" ? apiLimiter : (_req, _res, next) => next()
+);
 
 // Apply stricter rate limiting to webhook routes
 const webhookLimiter = rateLimit({
