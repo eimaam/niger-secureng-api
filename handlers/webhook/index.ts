@@ -1274,6 +1274,116 @@ export class Webhooks {
             }
 
             return updatedDriver;
+          } else if (
+            paymentType.name === PaymentTypeEnum.DRIVER_QR_CODE_PRINTING
+          ) {
+            const driverId = metaData?.driverId;
+
+            if (!driverId || !isValidObjectId(driverId)) {
+              throw {
+                code: 404,
+                message: "Invalid Driver Id",
+              };
+            }
+
+            const driver = await DriverModel.findById(driverId).session(
+              session
+            );
+
+            if (!driver) {
+              throw {
+                code: 404,
+                message: "Driver Not Found",
+              };
+            }
+
+            const updatedInvoice = await InvoiceService.updateInvoiceStatus(
+              reference,
+              InvoiceStatusEnum.PAID,
+              session
+            );
+
+            let updatedDriver;
+
+            // First, check if the downloadQuota for the qr code printing quota exists
+            if (
+              driver.downloadQuota &&
+              driver.downloadQuota.some(
+                (q) => q.type.toString() === paymentTypeId.toString()
+              )
+            ) {
+              // If it exists, just increment the quota
+              updatedDriver = await DriverModel.findByIdAndUpdate(
+                driverId,
+                {
+                  $inc: {
+                    "downloadQuota.$[elem].quota": 1,
+                  },
+                },
+                {
+                  arrayFilters: [{ "elem.type": paymentTypeId }],
+                  new: true,
+                  session,
+                }
+              );
+            } else {
+              // If it doesn't exist, add a new entry
+              updatedDriver = await DriverModel.findByIdAndUpdate(
+                driverId,
+                {
+                  $push: {
+                    downloadQuota: { type: paymentTypeId, quota: 1 },
+                  },
+                },
+                {
+                  new: true,
+                  session,
+                  runValidators: true,
+                }
+              );
+            }
+
+            if (!updatedDriver) {
+              throw {
+                code: 500,
+                message: "Error updating driver",
+              };
+            }
+
+            // fund beneficiaries
+            await Webhooks.distributeFundsToBeneficiaries(
+              beneficiariesWithPercentages,
+              Number(amountPaid),
+              "Driver QR Code Printing Benefit",
+              session
+            );
+
+            // create transaction record for the driver qr code printing
+            const transaction = await TransactionModel.create(
+              [
+                {
+                  amount: Number(amountPaid),
+                  status: PaymentStatusEnum.SUCCESSFUL,
+                  driver: driverId,
+                  processedBy: updatedInvoice?.createdBy,
+                  type: paymentType._id,
+
+                  beneficiaries: formatBeneficiariesForTransaction(
+                    beneficiariesWithPercentages
+                  ),
+                },
+              ],
+              { session }
+            );
+
+            if (!transaction) {
+              throw {
+                code: 500,
+                message: "Error creating transaction",
+              };
+            }
+
+            return updatedDriver;
           } else {
             throw {
               code: 400,

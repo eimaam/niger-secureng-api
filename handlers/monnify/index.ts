@@ -840,7 +840,6 @@ export class Monnify {
             expiryDate: invoice[0]?.expiryDate,
           };
         } else if (paymentType === PaymentTypeEnum.DRIVER_PERMIT_RENEWAL) {
-          console.log("driver permit renewal");
           const driver = await DriverModel.findById(id).session(session);
 
           if (!driver) {
@@ -949,7 +948,7 @@ export class Monnify {
           customerEmail: driver?.email,
           customerName: driver?.fullName,
           metaData: {
-            driver: id,
+            driverId: id,
             paymentType: invoiceType._id,
           },
           createdBy: userId as string,
