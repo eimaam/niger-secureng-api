@@ -11,6 +11,8 @@ import { UserService } from "../../services/user.service";
 import { WalletTypeEnum } from "../../models/Wallet";
 import { MonnifyService } from "../../services/monnify.wallet.service";
 import { PaymentDetailsModel } from "../../models/PaymentDetail";
+import { BeneficiaryService } from "../../services/beneficiary.service";
+import { Types } from "mongoose";
 
 export class Vendors {
   static async create(req: Request, res: Response) {
@@ -149,6 +151,12 @@ export class Vendors {
             [paymentAccountDetails],
             { session }
           ); 
+
+        await BeneficiaryService.addUserToTaxPaymentBeneficiaries(
+          newUserAccount?.[0]?._id as Types.ObjectId,
+          RoleName.Vendor,
+          session
+        );
 
         const newVendor: IVendor[] = await VendorModel.create(
           [

@@ -3,7 +3,6 @@ export const authString: string = Buffer.from(
   `${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`
 ).toString("base64");
 
-
 export const Config = {
   NODE_ENV: process.env.NODE_ENV,
   MAX_TAX_PAYMENT_DAYS: process.env.MAX_TAX_PAYMENT_DAYS,
@@ -16,6 +15,8 @@ export const Config = {
   MIN_SUPERVENDOR_WITHDRAWAL: process.env.MIN_SUPERVENDOR_WITHDRAWAL,
   MAX_SUPERVENDOR_WITHDRAWAL: process.env.MAX_SUPERVENDOR_WITHDRAWAL,
   MIN_WITHDRAWAL_AMOUNT: process.env.MIN_WITHDRAWAL_AMOUNT,
+  VENDOR_PERCENTAGE: process.env.VENDOR_PERCENTAGE,
+  SUPER_VENDOR_PERCENTAGE: process.env.SUPER_VENDOR_PERCENTAGE,
   BANK_TRANSFER_FEE: process.env.BANK_TRANSFER_FEE,
   MONNIFY_API_KEY: process.env.MONNIFY_API_KEY,
   MONNIFY_SECRET_KEY: process.env.MONNIFY_SECRET_KEY,
@@ -34,7 +35,7 @@ export const Config = {
   DOMAIN_URL: process.env.DOMAIN_URL,
 };
 
-export const BUCKET_STORAGE_LOCATION ={
+export const BUCKET_STORAGE_LOCATION = {
   VEHICLE_OWNERS_IMAGE: "vehicle-owner-images",
   DRIVERS_IMAGE: "driver-images",
 };

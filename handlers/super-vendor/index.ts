@@ -16,6 +16,8 @@ import { PaymentDetailsModel } from "../../models/PaymentDetail";
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { SuperVendorService } from "../../services/supervendor.service";
 import { body, param, validationResult } from "express-validator";
+import { BeneficiaryService } from "../../services/beneficiary.service";
+import { Types } from "mongoose";
 
 export class SuperVendor {
   static async create(req: Request, res: Response) {
@@ -156,6 +158,13 @@ export class SuperVendor {
         const paymentDetails = await PaymentDetailsModel.create(
           [paymentAccountDetails],
           { session }
+        );
+
+        // add the super vendor to all tax collection beneficiaries
+        await BeneficiaryService.addUserToTaxPaymentBeneficiaries(
+          newUserAccount?.[0]?._id as Types.ObjectId,
+          RoleName.SuperVendor,
+          session
         );
 
         const newSuperVendor: ISuperVendor[] = await SuperVendorModel.create(

@@ -108,6 +108,7 @@ export enum VehicleTypeEnum {
   SULEJA_JEGA = 'SULEJA_JEGA',
   TAFA_TRICYCLE = 'TAFA_TRICYCLE',
   TAFA_OKADA = 'TAFA_OKADA',
+  TAXI = "TAXI",
 }
 
 export enum Complexion {

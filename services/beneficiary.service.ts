@@ -4,6 +4,8 @@ import {
   IBeneficiary,
   PaymentTypeModel,
 } from "../models/PaymentType";
+import { Config } from "../utils/config";
+import { PaymentTypeEnum, RoleName, VehicleTypeEnum } from "../types";
 
 function hasCircularReference(obj: any): boolean {
   try {
@@ -118,5 +120,43 @@ export class BeneficiaryService {
     }
 
     return validatedBeneficiaries;
+  }
+
+  /**
+   * Add user to tax payment beneficiaries to ease the process of having to create individual beneficiaries
+   * @param userId The user ID of the new account
+   * @param role The role of the new account (super vendor or vendor)
+   * @param session The MongoDB session
+   */
+  static async addUserToTaxPaymentBeneficiaries(
+    userId: mongoose.Types.ObjectId,
+    role: RoleName,
+    session: ClientSession
+  ) {
+    const paymentTypes = Object.values(PaymentTypeEnum).filter((type) =>
+      Object.values(VehicleTypeEnum).includes(type as unknown as VehicleTypeEnum)
+    );
+    const percentageKey = `${role.toUpperCase()}_PERCENTAGE` as keyof typeof Config;
+    const percentage = Config[percentageKey];
+
+    if (!percentage) {
+      throw new Error(`Beneficiary percentage for role ${role} is not defined in the environment variables`);
+    }
+
+    const paymentTypesDocs = await PaymentTypeModel.find({
+      name: { $in: paymentTypes }
+    }).session(session);
+
+    console.log({ paymentTypesDocs });
+
+    const beneficiaries = paymentTypesDocs.map((paymentTypeDoc) => ({
+      user: userId,
+      role,
+      percentage: parseFloat(percentage),
+      paymentType: paymentTypeDoc._id,
+      createdBy: userId,
+    }));
+
+    await BeneficiaryModel.insertMany(beneficiaries, { session });
   }
 }
