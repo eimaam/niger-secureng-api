@@ -208,6 +208,7 @@ route.post(
   checkRole([
     RoleName.VehicleAdmin,
     RoleName.GeneralAdmin,
+    RoleName.RegistrationAdmin,
     RoleName.UpdateAdmin,
   ]),
   VehicleOwners.checkOwnerExists
