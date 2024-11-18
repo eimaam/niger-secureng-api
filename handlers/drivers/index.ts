@@ -84,7 +84,9 @@ export class Drivers {
 
         // verify driver with the same association number
         const existingAssociationNumber = await DriverModel.findOne({
-          associationNumber: { $regex: new RegExp(`^${associationNumber}$`, "i") }
+          associationNumber: {
+            $regex: new RegExp(`^${associationNumber}$`, "i"),
+          },
         }).session(session);
 
         if (existingAssociationNumber) {
@@ -168,7 +170,7 @@ export class Drivers {
             imageFile,
             `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}.png`
           );
-          
+
           if (!imageUrl) {
             throw new Error("Error uploading image");
           }
@@ -327,18 +329,17 @@ export class Drivers {
           .populate({
             path: "vehicleType",
             select: "name",
-          })
-
+          });
       } else {
         driver = await DriverModel.findById(driverId)
-        .populate({
-          path: "association",
-          select: "name code",
-        })
-        .populate({
-          path: "vehicleType",
-          select: "name",
-        })
+          .populate({
+            path: "association",
+            select: "name code",
+          })
+          .populate({
+            path: "vehicleType",
+            select: "name",
+          });
       }
 
       if (!driver) {
@@ -374,6 +375,31 @@ export class Drivers {
     const limit = parseInt(req.query.limit as string) || DEFAULT_QUERY_LIMIT;
     const skip = Number((page - 1) * limit);
 
+    // filters
+    const { fullName, nin, phoneNumber, email, associationNumber } = req.query;
+
+    const query: any = {};
+
+    if (fullName) {
+      query.fullName = { $regex: fullName as string, $options: "i" };
+    }
+
+    if (nin) {
+      query.nin = { $regex: nin as string, $options: "i" };
+    }
+
+    if (phoneNumber) {
+      query.phoneNumber = { $regex: phoneNumber as string, $options: "i" };
+    }
+
+    if (email) {
+      query.email = { $regex: email as string, $options: "i" };
+    }
+
+    if (associationNumber) {
+      query.association = associationNumber as string;
+    }
+
     const userId = req.headers["userid"] as string;
 
     const user = await UserModel.findById(userId);
@@ -392,7 +418,10 @@ export class Drivers {
           });
         }
 
-        drivers = await DriverModel.find({ association: association._id })
+        drivers = await DriverModel.find({
+          ...query,
+          association: association._id,
+        })
           .populate("association")
           .populate({
             path: "vehicleType",
@@ -403,10 +432,13 @@ export class Drivers {
           .limit(limit);
 
         totalDrivers = await DriverModel.countDocuments({
+          ...query,
           association: association._id,
         });
       } else {
-        drivers = await DriverModel.find({})
+        drivers = await DriverModel.find({
+          ...query,
+        })
           .populate("association")
           .populate({
             path: "vehicleType",
@@ -420,8 +452,8 @@ export class Drivers {
           .skip(skip)
           .limit(limit);
 
-            // convert the driver images to base64
-        async function convertDriverImagesToBase64(){
+        // convert the driver images to base64
+        async function convertDriverImagesToBase64() {
           return await Promise.all(
             drivers.map(async (driver) => {
               if (driver.image) {
@@ -429,19 +461,20 @@ export class Drivers {
                 try {
                   const base64Image = await convertImageToBase64(imageUrl);
                   driver.image = base64Image;
-                } catch(error){
-                  console.error(`Error converting image to base64 for driver with ID: ${driver._id}`);
+                } catch (error) {
+                  console.error(
+                    `Error converting image to base64 for driver with ID: ${driver._id}`
+                  );
                 }
               }
               return driver;
             })
           );
-
         }
 
         drivers = await convertDriverImagesToBase64();
 
-        totalDrivers = await DriverModel.countDocuments();
+        totalDrivers = await DriverModel.countDocuments(query);
       }
 
       return res.status(200).json({
@@ -505,7 +538,7 @@ export class Drivers {
         guarantor,
         vehicleType,
         association,
-        associationNumber
+        associationNumber,
       } = req.body;
 
       const formattedDateOfBirth = dob ? new Date(dob) : undefined;
