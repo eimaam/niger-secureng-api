@@ -17,12 +17,13 @@ export class VehicleOwners {
     }
 
     try {
+      const filters: any = {};
+      if (nin !== undefined && nin !== "" && nin) filters.nin = nin;
+      if (phoneNumber) filters.phoneNumber = phoneNumber;
+      if (email) filters.email = email;
+
       const vehicleOwner = await VehicleOwner.findOne({
-        $or: [
-          { nin: nin as string },
-          { phoneNumber: phoneNumber as string },
-          { email: email as string },
-        ],
+        $or: Object.keys(filters).map(key => ({ [key]: filters[key] })),
       });
 
       if (vehicleOwner) {
