@@ -99,7 +99,13 @@ const DriverSchema = new Schema<IDriver>(
       required: true,
       index: true,
     },
-    associationNumber: { type: String, required: true, unique: true, index: true },
+    associationNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      index: true,
+    },
     status: {
       type: String,
       enum: Object.values(AccountStatusEnum),
