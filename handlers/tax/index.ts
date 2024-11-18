@@ -560,11 +560,12 @@ export class Tax {
         .json({ success: false, message: "Invalid payment type ID" });
     }
 
-    if (paymentCategoryId && !isValidObjectId(paymentCategoryId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid payment category ID" });
-    }
+    // NO payment category for now in NIGER Secureng
+    // if (paymentCategoryId && !isValidObjectId(paymentCategoryId)) {
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, message: "Invalid payment category ID" });
+    // }
 
     try {
       const result = await withMongoTransaction(async (session) => {
