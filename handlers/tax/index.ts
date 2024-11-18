@@ -606,8 +606,7 @@ export class Tax {
 
         if (paymentTypeId)
           dbQuery["type"] = new mongoose.Types.ObjectId(paymentTypeId);
-        if (paymentCategoryId)
-          dbQuery["category"] = new mongoose.Types.ObjectId(paymentCategoryId);
+        
         if (amount) dbQuery["amount"] = Number(amount);
         if (daysPaid) dbQuery["daysPaid"] = Number(daysPaid);
 
@@ -627,10 +626,6 @@ export class Tax {
           .populate({
             path: "type",
             select: "name amount",
-          })
-          .populate({
-            path: "category",
-            select: "name",
           })
           .select("-beneficiaries")
           .skip(skip)
