@@ -165,12 +165,12 @@ route.post(
 );
 route.post(
   "/vehicle/download/certificate/:vehicleId",
-  checkRole([RoleName.PrintingAdmin]),
+  checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
   Vehicles.printCertificate
 );
 route.post(
   "/vehicle/download/qr/:vehicleId",
-  checkRole([RoleName.PrintingAdmin]),
+  checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
   Vehicles.downloadQrCode
 );
 // unregistered
@@ -237,93 +237,99 @@ route.post(
 );
 
 // drivers
-route.post('/driver',  checkRole([
-  RoleName.GeneralAdmin,
-  RoleName.VehicleAdmin,
-  RoleName.RegistrationAdmin,
-  RoleName.VehicleRegistrationAdmin,
-]), 
-upload.single('image'),
-Drivers.registerDriver);
+route.post(
+  "/driver",
+  checkRole([
+    RoleName.GeneralAdmin,
+    RoleName.VehicleAdmin,
+    RoleName.RegistrationAdmin,
+    RoleName.VehicleRegistrationAdmin,
+  ]),
+  upload.single("image"),
+  Drivers.registerDriver
+);
 route.get("/drivers/qr/:driverId", Drivers.getDataByQRCode);
-
 
 // download
 route.get("/downloads", checkRole([]), DownloadHistory.getAll);
-route.post("/vehicles/quota", checkRole([]), async (req: Request, res: Response) => {
-  const { identityCode, quota, type } = req.body;
+route.post(
+  "/vehicles/quota",
+  checkRole([]),
+  async (req: Request, res: Response) => {
+    const { identityCode, quota, type } = req.body;
 
-  // validate via express valdator
-  const validations = [
-    body("identityCode")
-      .notEmpty()
-      .withMessage("Identity code is required")
-      .isString()
-      .withMessage("Identity code must be a string"),
-    body("quota").isInt().withMessage("Quota must be a number"),
-    body("type")
-      .isIn(Object.values(PaymentTypeEnum))
-      .withMessage("Invalid payment type"),
-  ];
+    // validate via express valdator
+    const validations = [
+      body("identityCode")
+        .notEmpty()
+        .withMessage("Identity code is required")
+        .isString()
+        .withMessage("Identity code must be a string"),
+      body("quota").isInt().withMessage("Quota must be a number"),
+      body("type")
+        .isIn(Object.values(PaymentTypeEnum))
+        .withMessage("Invalid payment type"),
+    ];
 
-  await Promise.all(validations.map((validation) => validation.run(req)));
+    await Promise.all(validations.map((validation) => validation.run(req)));
 
-  const errors = validationResult(req);
+    const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()?.[0]?.msg,
-      errors: errors.array(),
-    });
-  }
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()?.[0]?.msg,
+        errors: errors.array(),
+      });
+    }
 
-  try {
-    let targetItem: mongoose.Types.ObjectId | string;
-    const result = await withMongoTransaction(async (session) => {
-      const quotaType = await PaymentTypeModel.findOne({ name: type }).session(
-        session
-      );
+    try {
+      let targetItem: mongoose.Types.ObjectId | string;
+      const result = await withMongoTransaction(async (session) => {
+        const quotaType = await PaymentTypeModel.findOne({
+          name: type,
+        }).session(session);
 
-      if (!quotaType) {
-        throw { code: 400, message: "Payment type does not exist" };
-      }
-
-      if (identityCode) {
-        const vehicle = await Vehicle.findOne({ identityCode }).session(
-          session
-        );
-
-        if (!vehicle) {
-          throw { code: 404, message: "Vehicle not found" };
+        if (!quotaType) {
+          throw { code: 400, message: "Payment type does not exist" };
         }
 
-        targetItem = vehicle._id;
-      }
+        if (identityCode) {
+          const vehicle = await Vehicle.findOne({ identityCode }).session(
+            session
+          );
 
-      const update = VehicleService.updateVehicleQuota({
-        vehicleId: targetItem,
-        paymentTypeId: quotaType._id,
-        numberOfQuotas: quota,
-        session,
+          if (!vehicle) {
+            throw { code: 404, message: "Vehicle not found" };
+          }
+
+          targetItem = vehicle._id;
+        }
+
+        const update = VehicleService.updateVehicleQuota({
+          vehicleId: targetItem,
+          paymentTypeId: quotaType._id,
+          numberOfQuotas: quota,
+          session,
+        });
+
+        return update;
       });
 
-      return update;
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Quota updated successfully",
-      data: result,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: "There was a problem creating association",
-      error: error?.message,
-    });
+      return res.status(200).json({
+        success: true,
+        message: "Quota updated successfully",
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "There was a problem creating association",
+        error: error?.message,
+      });
+    }
   }
-});
+);
 
 // driver
 route.post(
@@ -377,12 +383,12 @@ route.patch(
 route.delete("/drivers/:id", checkRole([]), Drivers.deleteDriver);
 route.post(
   "/driver/download/permit/:id",
-  checkRole([RoleName.PrintingAdmin]),
+  checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
   Drivers.downloadPermit
 );
 route.post(
   "/driver/download/qr/:driverId",
-  checkRole([RoleName.PrintingAdmin]),
+  checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
   Drivers.downloadQrCode
 );
 
@@ -532,10 +538,7 @@ route.post(
   Monnify.authorizeBulkTransfer
 );
 route.post("/monnify/otp/resend", checkRole(), Monnify.resendOtp);
-route.post(
-  "/monnify/banks/update",
-  MonnifyService.getAndUpdateSupportedBanks
-);
+route.post("/monnify/banks/update", MonnifyService.getAndUpdateSupportedBanks);
 
 // invoice
 // get all invoices from database
@@ -618,10 +621,10 @@ route.delete("/issuable/:id", checkRole(), Issuables.delete);
 route.post("/payment-type", checkRole(), PaymentTypes.create);
 route.get(
   "/payment-types",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin,
+  checkRole([
+    RoleName.Government,
+    RoleName.GeneralAdmin,
     RoleName.RegistrationAdmin,
-
-
   ]),
   PaymentTypes.getAll
 );
@@ -644,17 +647,22 @@ route.post(
   "/beneficiaries/remove/:id",
   checkRole(),
   BeneficiaryController.removeBeneficiaryFromPaymentType
-)
-route.delete("/beneficiaries/:id", checkRole(), BeneficiaryController.deleteBeneficiary);
+);
+route.delete(
+  "/beneficiaries/:id",
+  checkRole(),
+  BeneficiaryController.deleteBeneficiary
+);
 
 // payment category
 route.post("/payment-category", checkRole(), PaymentCategory.create);
 route.get(
   "/payment-categories",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin, 
+  checkRole([
+    RoleName.Government,
+    RoleName.GeneralAdmin,
 
     RoleName.RegistrationAdmin,
-
   ]),
   PaymentCategory.getAll
 );
@@ -735,9 +743,12 @@ route.get(
   ]),
   SubUnits.getAll
 );
-route.patch("/sub-units/:id", checkRole([RoleName.UnitAdmin]), SubUnits.updateOne);
+route.patch(
+  "/sub-units/:id",
+  checkRole([RoleName.UnitAdmin]),
+  SubUnits.updateOne
+);
 route.delete("/sub-units/:id", checkRole(), SubUnits.delete);
-
 
 // stakeholders
 // route.post("/stakeholder", Stakeholder.create);
@@ -805,18 +816,22 @@ route.get(
   "/analytics/stakeholder",
   checkRole([RoleName.Stakeholder]),
   Analytics.stakeholder
-)
+);
 // vehicle analytics
 route.get(
   "/analytics/vehicle",
-  checkRole([RoleName.Government, RoleName.GeneralAdmin, 
+  checkRole([
+    RoleName.Government,
+    RoleName.GeneralAdmin,
     RoleName.RegistrationAdmin,
   ]),
   Analytics.vehicles
 );
 route.get(
   "/analytics/invoice",
-  checkRole([RoleName.GeneralAdmin, RoleName.PrintingAdmin, 
+  checkRole([
+    RoleName.GeneralAdmin,
+    RoleName.PrintingAdmin,
     RoleName.RegistrationAdmin,
   ]),
   Analytics.invoices
