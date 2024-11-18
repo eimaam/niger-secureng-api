@@ -123,6 +123,7 @@ const DriverSchema = new Schema<IDriver>(
     phoneNumber: {
       type: String,
       required: true,
+      unique: true,
       minlength: 11,
       maxlength: 11,
       index: true,
