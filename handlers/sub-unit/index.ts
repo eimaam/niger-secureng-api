@@ -47,12 +47,13 @@ export class SubUnits {
     const page = req.query.page || DEFAULT_QUERY_PAGE;
     const limit = req.query.limit || DEFAULT_QUERY_LIMIT;
     const skip = (Number(page) - 1) * Number(limit);
-
+    
     try {
       const subUnits = await SubUnitModel.find()
-        .populate("unit")
-        .skip(skip)
-        .limit(Number(limit));
+      .populate("unit")
+      //  TODO: hard fix: remove the query page and limit
+        // .skip(skip)
+        // .limit(Number(limit));
 
         const totalSubUnits = await SubUnitModel.countDocuments();
 
