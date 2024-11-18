@@ -110,7 +110,7 @@ export class Drivers {
           address,
           guarantor: parsedGuarantor,
           association,
-          associationNumber,
+          associationNumber: associationNumber?.toUpperCase(),
           vehicleType,
           createdBy: req.headers["userid"],
         };
