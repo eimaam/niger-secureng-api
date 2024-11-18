@@ -98,12 +98,15 @@ export class Vehicles {
         const ownerQuery: any = {};
         if (parsedOwnerData.email) ownerQuery.email = parsedOwnerData.email;
         if (parsedOwnerData.nin) ownerQuery.nin = parsedOwnerData.nin;
-        if (parsedOwnerData.phoneNumber) ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
+        if (parsedOwnerData.phoneNumber)
+          ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
 
         console.log("ownerQuery", ownerQuery);
 
         const existingVehicleOwner = await VehicleOwner.findOne({
-          $or: Object.keys(ownerQuery).map(key => ({ [key]: ownerQuery[key] })),
+          $or: Object.keys(ownerQuery).map((key) => ({
+            [key]: ownerQuery[key],
+          })),
         }).session(session);
 
         // if owner exists, return error. There's a separate endpoint for registering vehicles with existing owners and as well that of transferring ownership
@@ -198,7 +201,7 @@ export class Vehicles {
           lga,
           association,
           unit,
-          subUnit, 
+          subUnit,
           existingId,
           owner: vehicleOwner?._id,
           status: VehicleStatusEnum.NOT_ACTIVATED,
@@ -726,14 +729,17 @@ export class Vehicles {
           isUnregisteredOwner = false;
         } else {
           // check if the owner with the new owner data exists
-            const ownerQuery: any = {};
-            if (parsedOwnerData.email) ownerQuery.email = parsedOwnerData.email;
-            if (parsedOwnerData.nin) ownerQuery.nin = parsedOwnerData.nin;
-            if (parsedOwnerData.phoneNumber) ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
+          const ownerQuery: any = {};
+          if (parsedOwnerData.email) ownerQuery.email = parsedOwnerData.email;
+          if (parsedOwnerData.nin) ownerQuery.nin = parsedOwnerData.nin;
+          if (parsedOwnerData.phoneNumber)
+            ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
 
-            const existingOwner = await VehicleOwner.findOne({
-            $or: Object.keys(ownerQuery).map(key => ({ [key]: ownerQuery[key] })),
-            }).session(session);
+          const existingOwner = await VehicleOwner.findOne({
+            $or: Object.keys(ownerQuery).map((key) => ({
+              [key]: ownerQuery[key],
+            })),
+          }).session(session);
 
           if (existingOwner) {
             throw {
@@ -1029,6 +1035,10 @@ export class Vehicles {
               select: "name code",
             })
             .populate({
+              path: "subUnit",
+              select: "name",
+            })
+            .populate({
               path: "createdBy",
               select: "-password -isDefaultPassword",
             })
@@ -1057,6 +1067,10 @@ export class Vehicles {
             .populate({
               path: "unit",
               select: "name code",
+            })
+            .populate({
+              path: "subUnit",
+              select: "name",
             })
             .populate({
               path: "downloadQuota.type",
