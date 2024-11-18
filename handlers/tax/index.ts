@@ -256,6 +256,7 @@ export class Tax {
         data: result,
       });
     } catch (error: any) {
+      console.log("Pay Tax Error: ", error);
       return res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -384,12 +385,6 @@ export class Tax {
         }).session(session);
 
         if (!superVendor) throw new Error("Super vendor not found");
-
-        const association = await AssociationModel.findById(
-          vehicle.association
-        ).session(session);
-
-        if (!association) throw new Error("Association not found");
 
         // fetch all beneficiaries for the payment type filtering the case of vendor and super vendor
         // for the role vendor and super vendor fetch only the data having the vendor and super vendor id for the target payment type
