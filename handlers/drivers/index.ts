@@ -84,7 +84,7 @@ export class Drivers {
 
         // verify driver with the same association number
         const existingAssociationNumber = await DriverModel.findOne({
-          associationNumber,
+          associationNumber: { $regex: new RegExp(`^${associationNumber}$`, "i") }
         }).session(session);
 
         if (existingAssociationNumber) {
