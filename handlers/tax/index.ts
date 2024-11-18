@@ -157,7 +157,7 @@ export class Tax {
         // Construct the query for beneficiaries
         const beneficiaryQuery = {
           $or: [
-            { role: { $nin: ["vendor", "superVendor"] } }, // Fetch all roles except vendor and superVendor
+            { role: { $nin: ["vendor", "super_vendor"] } }, // Fetch all roles except vendor and superVendor
             { role: RoleName.Vendor, user: vendorUserAccount._id }, // Fetch vendor with specific userId
             { role: RoleName.SuperVendor, user: superVendor.userId }, // Fetch superVendor with specific userId
           ],
