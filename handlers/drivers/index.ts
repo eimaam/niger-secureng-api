@@ -72,8 +72,13 @@ export class Drivers {
 
       const result = await withMongoTransaction(async (session) => {
         //  check if driver with the same NIN or phoneNumber already exists
+        const searchCriteria: any = {};
+        if (nin) searchCriteria.nin = nin;
+        if (phoneNumber) searchCriteria.phoneNumber = phoneNumber;
+        if (email) searchCriteria.email = email;
+
         const existingDriver = await DriverModel.findOne({
-          $or: [{ nin }, { phoneNumber }, { email }],
+          $or: Object.keys(searchCriteria).map(key => ({ [key]: searchCriteria[key] })),
         }).session(session);
 
         if (existingDriver) {
