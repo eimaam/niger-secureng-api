@@ -95,12 +95,15 @@ export class Vehicles {
           };
         }
 
+        const ownerQuery: any = {};
+        if (parsedOwnerData.email) ownerQuery.email = parsedOwnerData.email;
+        if (parsedOwnerData.nin) ownerQuery.nin = parsedOwnerData.nin;
+        if (parsedOwnerData.phoneNumber) ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
+
+        console.log("ownerQuery", ownerQuery);
+
         const existingVehicleOwner = await VehicleOwner.findOne({
-          $or: [
-            { email: (parsedOwnerData as IVehicleOwner).email },
-            { nin: (parsedOwnerData as IVehicleOwner).nin },
-            { phoneNumber: (parsedOwnerData as IVehicleOwner).phoneNumber },
-          ],
+          $or: Object.keys(ownerQuery).map(key => ({ [key]: ownerQuery[key] })),
         }).session(session);
 
         // if owner exists, return error. There's a separate endpoint for registering vehicles with existing owners and as well that of transferring ownership
@@ -723,13 +726,14 @@ export class Vehicles {
           isUnregisteredOwner = false;
         } else {
           // check if the owner with the new owner data exists
-          const existingOwner = await VehicleOwner.findOne({
-            $or: [
-              { email: parsedOwnerData.email },
-              { nin: parsedOwnerData.nin },
-              { phoneNumber: newOwnerData.phoneNumber },
-            ],
-          }).session(session);
+            const ownerQuery: any = {};
+            if (parsedOwnerData.email) ownerQuery.email = parsedOwnerData.email;
+            if (parsedOwnerData.nin) ownerQuery.nin = parsedOwnerData.nin;
+            if (parsedOwnerData.phoneNumber) ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
+
+            const existingOwner = await VehicleOwner.findOne({
+            $or: Object.keys(ownerQuery).map(key => ({ [key]: ownerQuery[key] })),
+            }).session(session);
 
           if (existingOwner) {
             throw {
