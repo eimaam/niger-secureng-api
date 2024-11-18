@@ -178,16 +178,7 @@ export class Vehicles {
           };
         }
 
-        // confirm that association and unit type values are same as the selected tax type
-        if (
-          existingAssociation.type.toString() !== selectedTaxType._id.toString()
-        ) {
-          throw {
-            code: 400,
-            message: "Association and selected Vehicle Tax Type do not match",
-          };
-        }
-
+        // verify that unit type and selected vehicle type do match
         if (
           existingUnit?.taxType?.toString() !== selectedTaxType._id.toString()
         ) {
@@ -494,16 +485,7 @@ export class Vehicles {
           };
         }
 
-        // confirm that association and unit type values are same as the selected tax type
-        if (
-          existingAssociation.type.toString() !== selectedTaxType._id.toString()
-        ) {
-          throw {
-            code: 400,
-            message: "Association and selected Vehicle Tax Type do not match",
-          };
-        }
-
+        // confirm that unit type values are same as the selected tax type
         if (
           existingUnit?.taxType?.toString() !== selectedTaxType._id.toString()
         ) {
