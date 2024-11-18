@@ -1214,7 +1214,11 @@ export class Vehicles {
 
       if (user?.role === RoleName.Vendor) {
         vehicles = await Vehicle.find(filters as any)
-          .select("-owner -downloadQuota -license")
+          .select("-downloadQuota -license")
+          .populate({
+            path: "owner",
+            select: "fullName",
+          })
           .populate({
             path: "vehicleType",
             select: "name amount",
