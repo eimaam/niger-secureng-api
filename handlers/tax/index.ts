@@ -122,12 +122,12 @@ export class Tax {
           vendorUserAccount._id as mongoose.Types.ObjectId,
           totalAmount,
           WalletTransactionType.Payment,
+          vendorUserAccount._id as mongoose.Types.ObjectId,
           superAdminId as mongoose.Types.ObjectId,
-          vendorUserAccount._id as mongoose.Types.ObjectId,
           generateUniqueReference(),
-          "Tax Payment Benefit",
+          "Tax Payment",
           PaymentStatusEnum.SUCCESSFUL,
-          vendorUserAccount._id as mongoose.Types.ObjectId,
+          superAdminId as mongoose.Types.ObjectId,
           session
         );
 
@@ -201,7 +201,7 @@ export class Tax {
               generateUniqueReference(),
               "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
-              vendorUserAccount._id as mongoose.Types.ObjectId,
+              superAdminId as mongoose.Types.ObjectId,
               session
             );
 
@@ -359,12 +359,12 @@ export class Tax {
           vendorUserAccount._id as mongoose.Types.ObjectId,
           totalAmount,
           WalletTransactionType.Payment,
+          vendorUserAccount._id as mongoose.Types.ObjectId,
           superAdminId as mongoose.Types.ObjectId,
-          vendorUserAccount._id as mongoose.Types.ObjectId,
           generateUniqueReference(),
-          "Tax Payment Benefit",
+          "Tax Payment",
           PaymentStatusEnum.SUCCESSFUL,
-          vendorUserAccount._id as mongoose.Types.ObjectId,
+          superAdminId as mongoose.Types.ObjectId,
           session
         );
 
@@ -447,7 +447,7 @@ export class Tax {
               generateUniqueReference(),
               "Tax Payment Commission",
               PaymentStatusEnum.SUCCESSFUL,
-              vendorUserAccount._id as mongoose.Types.ObjectId,
+              superAdminId as mongoose.Types.ObjectId,
               session
             );
 
