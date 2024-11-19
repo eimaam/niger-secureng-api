@@ -11,6 +11,7 @@ import {
   RoleName,
   VehicleTypeEnum,
   PaymentTypeEnum,
+  AccountStatusEnum,
 } from "../../types";
 import { withMongoTransaction } from "../../utils/mongoTransaction";
 import { WalletService } from "../../services/wallet.service";
@@ -23,6 +24,7 @@ import { UserModel } from "../../models/User";
 import { header, query, validationResult } from "express-validator";
 import InvoiceModel, { InvoiceStatusEnum } from "../../models/Invoice";
 import { PaymentTypeModel } from "../../models/PaymentType";
+import { DriverModel } from "../../models/Driver";
 
 export class Analytics {
   static async Main(req: Request, res: Response) {
@@ -358,6 +360,150 @@ export class Analytics {
       return res.status(500).json({
         success: false,
         message: "There was a problem getting vehicle analytics",
+        error: error.message || error,
+      });
+    }
+  }
+
+  static async drivers(req: Request, res: Response) {
+    const {
+      filter = AnalyticsFilterRange.DAILY,
+      year,
+      status,
+    } = req.query;
+
+    const { startDate, endDate } = getDateRange(
+      filter as AnalyticsFilterRange,
+      parseInt(year as string)
+    );
+    try {
+      const result = await withMongoTransaction(async (session) => {
+        // get total drivers registered today
+        const totalDriversRegisteredToday = await DriverModel.countDocuments({
+          createdAt: { $gte: new Date().setHours(0, 0, 0, 0) },
+        }).session(session);
+
+        const filteredTotalDriversRegistered = await DriverModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+            },
+          },
+        ]).session(session);
+
+        // get drivers by status
+        const allDriversByStatus = await DriverModel.aggregate([
+          {
+            $group: {
+              _id: null,
+              active: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$status", AccountStatusEnum.ACTIVE] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              inactive: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$status", AccountStatusEnum.INACTIVE] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              suspended: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$status", AccountStatusEnum.SUSPENDED] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              deleted: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$status", AccountStatusEnum.DELETED] },
+                    1,
+                    0,
+                  ],
+                },
+              }
+            },
+          },
+        ]).session(session);
+
+        const driverStatusCounts = allDriversByStatus[0] || {
+          active: 0,
+          inactive: 0,
+          blacklisted: 0,
+          suspended: 0,
+        };
+
+        // get drivers with expired permits
+        const driversWithExpiredPermits = await DriverModel.countDocuments({
+          "permit.expiryDate": { $lt: new Date() },
+        }).session(session);
+
+        // get drivers registration trend over time
+        const driverRegistrationTrend = await DriverModel.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                month: { $month: "$createdAt" },
+                year: { $year: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { "_id.year": 1, "_id.month": 1 } },
+          {
+            $project: {
+              date: {
+                $concat: [
+                  { $toString: "$_id.year" },
+                  "-",
+                  { $toString: "$_id.month" },
+                ],
+              },
+              count: 1,
+              _id: 0,
+            },
+          },
+        ]).session(session);
+
+        return {
+          totalDriversRegisteredToday,
+          filteredTotalDriversRegistered: filteredTotalDriversRegistered[0]?.total || 0,
+          driverStatusCounts,
+          driversWithExpiredPermits,
+          registrationTrend: driverRegistrationTrend,
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Driver analytics fetched successfully",
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "There was a problem getting driver analytics",
         error: error.message || error,
       });
     }
@@ -1360,4 +1506,5 @@ export class Analytics {
       return res.status(500).json({ error: "An error occurred" });
     }
   }
+
 }

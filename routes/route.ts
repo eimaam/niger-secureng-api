@@ -828,6 +828,15 @@ route.get(
   Analytics.vehicles
 );
 route.get(
+  "/analytics/driver",
+  checkRole([
+    RoleName.Government,
+    RoleName.GeneralAdmin,
+    RoleName.RegistrationAdmin,
+  ]),
+  Analytics.drivers
+)
+route.get(
   "/analytics/invoice",
   checkRole([
     RoleName.GeneralAdmin,

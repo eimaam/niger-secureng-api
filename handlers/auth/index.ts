@@ -69,6 +69,7 @@ export class Auth {
 
         const data = {
           ...user.toObject(),
+          password: undefined,
           token,
           depositWallet,
           fundingWallet,
