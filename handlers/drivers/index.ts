@@ -104,7 +104,7 @@ export class Drivers {
           nin,
           fullName,
           // Image processing will be done later after successful processing of driver creation and invoice generation
-          image: null,
+          image: undefined,
           email,
           phoneNumber,
           dob: formattedDateOfBirth,
