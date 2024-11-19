@@ -63,7 +63,6 @@ const DriverSchema = new Schema<IDriver>(
   {
     nin: {
       type: String,
-      required: true,
       minlength: 11,
       maxlength: 11,
       unique: true,
