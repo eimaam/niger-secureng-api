@@ -135,22 +135,24 @@ export class VehicleService {
       }
 
       if (status === VehicleStatusEnum.INACTIVE) {
+        // TODO: uncomment this if plan changes to vehicle can not be set to inactive without having to cear debts
+        // commenting it out for now as NIGER requested it shouldn't work as such
         // Check if the vehicle has any unpaid tax
-        if (vehicle.taxPaidUntil && vehicle.taxPaidUntil < new Date()) {
-          throw {
-            message: "Cannot set vehicle to inactive. There is unpaid tax.",
-            status: 400,
-          };
-        }
+        // if (vehicle.taxPaidUntil && vehicle.taxPaidUntil < new Date()) {
+        //   throw {
+        //     message: "Cannot set vehicle to inactive. There is unpaid tax.",
+        //     status: 400,
+        //   };
+        // }
         vehicle.dateSetInactive = new Date();
       } else if (status === VehicleStatusEnum.ACTIVATED) {
         // If the vehicle was inactive, adjust the taxPaidUntil date
         if (vehicle.dateSetInactive && vehicle.taxPaidUntil) {
-          const inactiveDays = moment().diff(
-            moment(vehicle.dateSetInactive),
-            "days"
-          );
+          const inactiveDays = moment()
+            .tz("Africa/Lagos")
+            .diff(moment(vehicle.dateSetInactive), "days");
           vehicle.taxPaidUntil = moment(vehicle.taxPaidUntil)
+            .tz("Africa/Lagos")
             .add(inactiveDays, "days")
             .toDate();
         }
@@ -160,7 +162,10 @@ export class VehicleService {
 
         // If the taxPaidUntil date is in the past, set it to today
         if (!vehicle.taxPaidUntil || vehicle.taxPaidUntil < new Date()) {
-          vehicle.taxPaidUntil = moment().startOf("day").toDate();
+          vehicle.taxPaidUntil = moment()
+            .tz("Africa/Lagos")
+            .startOf("day")
+            .toDate();
         }
       }
 
