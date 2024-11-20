@@ -17,14 +17,18 @@ import { authString, Config } from "./config";
 import { FundingWalletModel } from "../models/Wallet";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
+import bcrypt from "bcrypt";
 
 // MONNIFY >>
 export const MONNIFY = {
   // Encode the apiKey and clientSecret to base64
   authHeader: `Basic ${authString}`,
 };
-
-export const generatePassword = async () => {
+/**
+ * Generates a random password of 8 characters long from a charset of alphanumeric characters.
+ * @returns {string} - The generated password.
+ */
+export const generatePassword = () : string => {
   const length = 8;
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -237,4 +241,14 @@ export const getDaysOwing = (taxPaidUntil: Date | null): number => {
     );
   }
   return 0;
+};
+
+
+/**
+ * Hashes the given data.
+ * @param data The data to hash.
+ * @returns The hashed data.
+ */
+export const hashData = async (data: string): Promise<string> => {
+  return await bcrypt.hash(data, 10);
 };

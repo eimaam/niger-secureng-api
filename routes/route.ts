@@ -57,6 +57,8 @@ route.patch("/user", checkRole(), User.updateUser);
 route.delete("/user/:id", checkRole(), User.deleteUser);
 // update password from default password to a new password
 route.put("/users/:userId/password", User.updateDefaultPassword);
+// Admin: reset a user's password 
+route.put("/users/admin/:userId/reset-password", checkRole(), User.resetUserPassword);
 
 // registered vehicle
 route.post(
@@ -251,10 +253,10 @@ route.post(
 route.get("/drivers/qr/:driverId", Drivers.getDataByQRCode);
 
 // download
-route.get("/downloads", checkRole([]), DownloadHistory.getAll);
+route.get("/downloads", checkRole(), DownloadHistory.getAll);
 route.post(
   "/vehicles/quota",
-  checkRole([]),
+  checkRole(),
   async (req: Request, res: Response) => {
     const { identityCode, quota, type } = req.body;
 
@@ -380,7 +382,7 @@ route.patch(
   ]),
   Drivers.updateDriver
 );
-route.delete("/drivers/:id", checkRole([]), Drivers.deleteDriver);
+route.delete("/drivers/:id", checkRole(), Drivers.deleteDriver);
 route.post(
   "/driver/download/permit/:id",
   checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
@@ -579,7 +581,7 @@ route.post(
   Monnify.generateNewInvoice
 );
 // get the invoices via monnify api
-route.get("/monnify/invoices", checkRole([]), Monnify.getAllInvoices);
+route.get("/monnify/invoices", checkRole(), Monnify.getAllInvoices);
 
 route.post("/lga/head", checkRole(), LGAHeads.create);
 route.get("/lga/heads", checkRole([RoleName.Government]), LGAHeads.getAll);
@@ -779,13 +781,13 @@ route.post(
   checkRole([RoleName.Vendor]),
   Tax.payUnregisteredTax
 );
-route.post("/tax/vehicle/waive", checkRole([]), Tax.waiveTaxGeneral);
+route.post("/tax/vehicle/waive", checkRole(), Tax.waiveTaxGeneral);
 route.post(
   "/tax/vehicle/waive/:vehicleCode",
-  checkRole([]),
+  checkRole(),
   Tax.waiveTaxForSingleVehicle
 );
-route.get("/tax/vehicle/waivelogs", checkRole([]), Tax.getAllTaxWaiveLogs);
+route.get("/tax/vehicle/waivelogs", checkRole(), Tax.getAllTaxWaiveLogs);
 
 // transactions
 route.get(
@@ -795,7 +797,7 @@ route.get(
 
 // Analytics
 // transactions analytics
-route.get("/analytics", checkRole([]), Analytics.Main);
+route.get("/analytics", checkRole(), Analytics.Main);
 route.get(
   "/analytics/super_vendor",
   checkRole([RoleName.SuperVendor]),

@@ -13,6 +13,7 @@ import {
 } from "../../models/Wallet";
 import { PaymentDetailsModel } from "../../models/PaymentDetail";
 import MonnifySupportedBankModel from "../../models/MonnifySupportedBank";
+import { UserService } from "../../services/user.service";
 
 export const NO_PAYMENT_DETAILS_REQUIRED_ROLES = [
   RoleName.SuperAdmin,
@@ -164,6 +165,36 @@ export class User {
       return res.status(500).json({
         success: false,
         message: "Error creating user",
+        error: error.message,
+      });
+    }
+  }
+
+  static async resetUserPassword(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+
+      const user = await UserModel
+        .findById(userId);
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const updatedUser = await UserService.resetUserPassword(userId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Password reset successfully",
+        data: updatedUser,
+      });
+
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error resetting user password",
         error: error.message,
       });
     }
