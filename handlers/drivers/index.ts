@@ -402,7 +402,7 @@ export class Drivers {
     }
 
     if (associationNumber) {
-      query.association = associationNumber as string;
+      query.associationNumber = { $regex: associationNumber as string, $options: "i" };
     }
 
     const userId = req.headers["userid"] as string;
