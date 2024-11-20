@@ -147,13 +147,9 @@ export class Tax {
         }).session(session);
         if (!superVendor) throw new Error("Super vendor not found");
 
-        const association = await AssociationModel.findById(
-          vehicle.association
-        ).session(session);
-        if (!association) throw new Error("Association not found");
-
         // fetch all beneficiaries for the payment type filtering the case of vendor and super vendor
         // for the role vendor and super vendor fetch only the data having the vendor and super vendor id for the target payment type
+        // this is to ensure that we only get the vendor and its super vendor as beneficiaries for the payment type and not other vendors and super vendors.
         // Construct the query for beneficiaries
         const beneficiaryQuery = {
           $or: [
