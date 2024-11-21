@@ -49,7 +49,7 @@ export class BeneficiaryService {
       
       // get the beneficiaries list and pass the query if it exists
       const beneficiariesList = await BeneficiaryModel.find(beneficiaryQuery).session(mongoSession);      
-console.log({ beneficiariesList})
+
       if (!beneficiariesList || beneficiariesList.length === 0) {
         throw new Error("No beneficiaries found for the payment type");
       }

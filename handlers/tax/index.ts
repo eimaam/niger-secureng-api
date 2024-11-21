@@ -207,7 +207,7 @@ export class Tax {
 
         vehicle.taxPaidUntil = newTaxPaidUntil;
         vehicle.status = VehicleStatusEnum.ACTIVATED;
-        await vehicle.save({ session });
+        await vehicle.save({ session, validateModifiedOnly: true });
 
         const transaction = await TransactionModel.create(
           [
