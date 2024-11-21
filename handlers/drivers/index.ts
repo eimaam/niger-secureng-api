@@ -453,7 +453,10 @@ export class Drivers {
             path: "downloadQuota.type",
             select: "name",
           })
-          .populate("createdBy")
+          .populate({
+            path: "createdBy",
+            select: "fullName email"
+          })
           .skip(skip)
           .limit(limit);
 
