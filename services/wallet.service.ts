@@ -138,6 +138,29 @@ export class WalletService {
     return wallet;
   }
 
+  static async resetWalletHeldBalance(
+    walletId: string,
+    walletType: WalletTypeEnum,
+    session?: ClientSession
+  ) {
+    const mongoSession = session ?? null;
+    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
+      ? EarningsWalletModel
+      : DepositWalletModel;
+
+    const wallet = await WalletModel.findByIdAndUpdate(
+      walletId,
+      { heldBalance: 0 },
+      { session: mongoSession, new: true, runValidators: true }
+    );
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+
+    return wallet;
+  }
+
   static async getWalletByOwnerId(
     userId: mongoose.Types.ObjectId | string,
     type: WalletTypeEnum,

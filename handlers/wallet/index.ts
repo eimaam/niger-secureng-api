@@ -526,7 +526,7 @@ export class WalletController {
     }
   }
 
-  static async resetAllBalances(_req: Request, res: Response) {
+  static async resetAllDepositBalances(_req: Request, res: Response) {
     try {
       const result = await withMongoTransaction(async (session) => {
         const wallets = await DepositWalletModel.find().session(session);
@@ -552,6 +552,37 @@ export class WalletController {
       return res.status(500).json({
         success: false,
         message: "There was a problem resetting all wallet balances",
+        error: error.message,
+      });
+    }
+  }
+
+  static async resetEarningWalletHeldBalances(req: Request, res: Response) {
+    const { walletId } = req.params;
+
+    try {
+      const wallet = await EarningsWalletModel.findById(walletId);
+
+      if (!wallet) {
+        return res.status(404).json({
+          success: false,
+          message: "Wallet not found",
+        });
+      }
+
+      await WalletService.resetWalletHeldBalance(
+        wallet,
+        WalletTypeEnum.EARNINGS
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Wallet held balance reset successfully",
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error resetting wallet held balance",
         error: error.message,
       });
     }

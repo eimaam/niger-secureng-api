@@ -487,7 +487,12 @@ route.get(
 route.post(
   "/wallets/deposit/balance/reset",
   checkRole(),
-  WalletController.resetAllBalances
+  WalletController.resetAllDepositBalances
+);
+route.post(
+  "/wallets/earnings/balance/reset/:walletId",
+  checkRole(),
+  WalletController.resetEarningWalletHeldBalances
 );
 
 // wallet funding
