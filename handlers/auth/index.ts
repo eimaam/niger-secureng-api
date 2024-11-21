@@ -72,6 +72,7 @@ export class Auth {
           password: undefined,
           token,
           depositWallet,
+          earningsWallet,
           fundingWallet,
           paymentDetails,
         };
