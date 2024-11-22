@@ -104,6 +104,8 @@ const DriverSchema = new Schema<IDriver>(
       unique: true,
       uppercase: true,
       index: true,
+      trim: true,
+      set: (value: string) => value?.replace(/\s+/g, ""), // Remove all spaces
     },
     status: {
       type: String,
