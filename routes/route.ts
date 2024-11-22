@@ -385,7 +385,7 @@ route.patch(
 route.delete("/drivers/:id", checkRole(), Drivers.deleteDriver);
 route.post(
   "/driver/download/permit/:id",
-  checkRole([RoleName.PrintingAdmin, RoleName.GeneralAdmin]),
+  checkRole([RoleName.PrintingAdmin, RoleName.RegistrationAdmin, RoleName.GeneralAdmin]),
   Drivers.downloadPermit
 );
 route.post(

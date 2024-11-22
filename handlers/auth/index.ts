@@ -26,7 +26,10 @@ export class Auth {
     try {
       const result = await withMongoTransaction(async (session) => {
         user = await UserModel.findOne({ email })
-          .populate("createdBy")
+          .populate({
+            path: "createdBy",
+            select: "fullName email role phoneNumber",
+          })
           .session(session);
 
         if (!user || !(await bcrypt.compare(password, user.password))) {
