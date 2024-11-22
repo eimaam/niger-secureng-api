@@ -58,6 +58,8 @@ export interface IFundingWallet extends Document {
   accountReference: string;
   accountName: string;
   accountEmail: string;
+  nin: string;
+  bvn: string;
   accounts: IMonnifyAccount[];
   reservationReference: string;
   status: string;
@@ -69,6 +71,8 @@ const FundingWalletSchema = new Schema<IFundingWallet>(
     accountReference: { type: String, required: true, unique: true },
     accountName: { type: String, required: true },
     accountEmail: { type: String, required: true, unique: true },
+    nin: { type: String, sparse: true, unique: true, minlength: 11, maxlength: 11 },
+    bvn: { type: String, sparse: true, unique: true, minlength: 11, maxlength: 11 },
     accounts: [
       {
         bankCode: { type: String, required: true },

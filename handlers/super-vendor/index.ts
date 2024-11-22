@@ -28,6 +28,8 @@ export class SuperVendor {
       accountNumber,
       accountName,
       bankCode,
+      nin, 
+      bvn
     } = req.body;
 
     const userId = req.headers["userid"];
@@ -45,6 +47,15 @@ export class SuperVendor {
         message: "Full name, phone number and email are required",
       });
     }
+
+    if (!nin && !bvn) {
+      return res.status(400).json({
+        success: false,
+        message: "Either NIN or BVN is required",
+      });
+    }
+
+
 
     try {
       const result = await withMongoTransaction(async (session) => {
@@ -110,7 +121,9 @@ export class SuperVendor {
         const monnifyReservedAccount = await MonnifyService.reserveAccount(
           newUserAccount[0]._id as string,
           fullName,
-          email
+          email,
+          bvn,
+          nin
         );
 
         // Loop through the accounts array and check for each account number if it already exists or assigned to another user
@@ -132,6 +145,8 @@ export class SuperVendor {
                 owner: newUserAccount[0]._id,
                 accountReference: newUserAccount[0]._id,
                 accountName: fullName,
+                ...(nin && { nin }),
+                ...(bvn && { bvn }),
                 accountEmail: email,
                 accounts: monnifyReservedAccount.accounts,
                 reservationReference:

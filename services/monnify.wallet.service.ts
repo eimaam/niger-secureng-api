@@ -49,6 +49,8 @@ export class MonnifyService {
    * @param userId The user ID to reserve account for
    * @param fullName The full name of the user
    * @param email Email of the user
+   * @param bvn The user's BVN > either bvn or nin is required
+   * @param nin The user's NIN > either bvn or nin is required
    * @param limitProfileCode monnify account limit profile code
    * @returns The reserved accounts details with an "accounts" field as array of the various bank accounts generated
    */
@@ -56,6 +58,8 @@ export class MonnifyService {
     userId: string,
     fullName: string,
     email: string,
+    bvn?: string,
+    nin?: string,
     limitProfileCode?: string
   ) {
     if (!isValidObjectId(userId)) {
@@ -81,6 +85,8 @@ export class MonnifyService {
         customerEmail: email,
         customerName: fullName,
         getAllAvailableBanks: false, // set to 'true' to disabled account creation from all banks and only use the specified banks in the preferredBanks array below
+        ...(bvn ? { bvn } : {}),
+        ...(nin ? { nin } : {}),
         // Bank codes > This selects banks for the virtual account creation. MoniePoint, Wema Bank, Sterling Bank
         ...(limitProfileCode ? { limitProfileCode } : {}),
         preferredBanks: ["50515", "035", "232"],
