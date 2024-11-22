@@ -103,7 +103,7 @@ export class DownloadHistory {
                 })
                 .populate({
                     path: "driver",
-                    select: "fullName",
+                    select: "fullName associationNumber",
                 })
                 .populate({
                     path: "type",
@@ -117,12 +117,12 @@ export class DownloadHistory {
                 .limit(limit)
                 .sort({ date: -1 });
 
-                const total = await DownloadHistoryModel.countDocuments(query);
+                const totalDownloads = await DownloadHistoryModel.countDocuments(query);
 
                 const data = {
-                    total,
+                    total: totalDownloads,
                     page,
-                    totalPages: Math.ceil(total / limit),
+                    totalPages: Math.ceil(totalDownloads / limit),
                    data: downloadHistory
                 };
                 

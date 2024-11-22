@@ -523,6 +523,7 @@ export class Tax {
       status,
       fromDate,
       toDate,
+      vehicleIdentityCode,
     }: {
       page?: number;
       limit?: number;
@@ -530,7 +531,7 @@ export class Tax {
       paymentCategoryId?: string;
       amount?: number;
       daysPaid?: number;
-      vehicleId?: string;
+      vehicleIdentityCode?: string;
       status?: PaymentStatusEnum;
       fromDate?: Date;
       toDate?: Date;
@@ -544,11 +545,7 @@ export class Tax {
         .json({ success: false, message: "Invalid user ID" });
     }
 
-    // if (vehicleId && !isValidObjectId(vehicleId)) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: "Invalid vehicle ID" });
-    // }
+   
 
     if (paymentTypeId && !isValidObjectId(paymentTypeId)) {
       return res
@@ -568,6 +565,21 @@ export class Tax {
         const dbQuery: any = {};
 
         const user = await UserModel.findById(userId).session(session);
+
+        if (vehicleIdentityCode) {
+          const vehicle = await Vehicle.findOne({
+            identityCode: { $regex: new RegExp(vehicleIdentityCode, "i") },
+          }).session(session);
+
+          if (!vehicle) {
+            return {
+              transactions: [],
+              totalTransactions: 0,
+            };
+          }
+
+          dbQuery["vehicle"] = vehicle._id;
+        }
 
         if (user.role === RoleName.Vendor) {
           dbQuery["processedBy"] = new mongoose.Types.ObjectId(userId);
@@ -634,9 +646,20 @@ export class Tax {
           dbQuery
         ).session(session);
 
+        const overallTotalAmount = await TransactionModel.aggregate([
+          { $match: dbQuery },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ]).session(session);
+
         return {
           transactions,
           totalTransactions,
+          overallTotalAmount: overallTotalAmount[0]?.totalAmount || 0,
         };
       });
 
@@ -646,6 +669,7 @@ export class Tax {
         page,
         total: result.totalTransactions,
         totalPages: Math.ceil(result.totalTransactions / Number(limit)),
+        overallTotalAmount: result.overallTotalAmount,
         data: result.transactions,
       });
     } catch (error: any) {
