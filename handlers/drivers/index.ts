@@ -171,11 +171,12 @@ export class Drivers {
 
       if (result.invoice) {
         try {
+          const location = `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}`
           const imageUrl = await uploadImage(
             imageFile,
-            `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}.png`
+            location
           );
-
+          
           if (!imageUrl) {
             throw new Error("Error uploading image");
           }

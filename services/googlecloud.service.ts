@@ -12,10 +12,21 @@ export const uploadImage = async (
   file: Express.Multer.File,
   location: string
 ): Promise<string> => {
-  const blob = bucket.file(`niger-secureng/${location}`);
+  const extension = file?.mimetype?.split('/')[1]; // Get the file extension
+
+  // verify that the file is an image - image/png, image/jpeg, image/jpg, image/gif are allowed
+  const allowedExtensions = ['png', 'jpeg', 'jpg', 'gif'];
+  if (!allowedExtensions.includes(extension)) {
+    throw new Error('Invalid file type, only images are allowed');
+  }
+
+  const blob = bucket.file(`niger-secureng/${location}.${extension}`);
   const blobStream = blob.createWriteStream({
     resumable: false,
     public: true,
+    metadata: {
+      contentType: file?.mimetype,
+    }
   });
 
   return new Promise((resolve, reject) => {

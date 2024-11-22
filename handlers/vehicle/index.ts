@@ -294,12 +294,15 @@ export class Vehicles {
 
       if (vehicleOwner) {
         try {
+          const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${(vehicleOwner as IVehicleOwner)?._id}`;
           const imageUrl = await uploadImage(
             imageFile,
-            `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${
-              (vehicleOwner as IVehicleOwner)?._id
-            }.png`
+            location
           );
+
+          if (!imageUrl) {
+            throw new Error("Error uploading vehicle owner's image");
+          }
 
           // Update owner with image URL
           await VehicleOwner.findByIdAndUpdate(
