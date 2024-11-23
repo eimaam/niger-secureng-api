@@ -1517,7 +1517,7 @@ export class Vehicles {
           if (checkDuplicateNIN) {
             throw {
             code: 400,
-            message: "Vehicle Owner with same NIN already registered",
+            message: "Vehicle Owner with same NIN already registered. Use the Transfer Ownership page if this is a vehicle transfer",
             };
           }
 
@@ -1532,7 +1532,7 @@ export class Vehicles {
             throw {
               code: 400,
               message:
-                "Vehicle Owner with same Phone Number already registered",
+                "Vehicle Owner with same Phone Number already registered. Use the Transfer Ownership page if this is a vehicle transfer",
             };
           }
 
