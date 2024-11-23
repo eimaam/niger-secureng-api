@@ -867,6 +867,26 @@ if (updatedVehicle.identityCode) {
           }
 
           targetVehicle = newVehicle;
+
+          // transfer vehicle to new owner
+          const addVehicleToOwnersList = await VehicleOwner.findByIdAndUpdate(
+            newVehicleOwnerId,
+            {
+              $push: {
+                vehicles: newVehicle._id,
+              },
+            },
+            { new: true, runValidators: true, session }
+          );
+
+          if (!addVehicleToOwnersList) {
+            throw {
+              code: 500,
+              message: "Failed to update Vehicle Owner",
+            };
+          }
+
+
         } else {
           // update vehicle
           const updatedVehicle = await Vehicle.findByIdAndUpdate(
