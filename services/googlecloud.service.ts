@@ -20,7 +20,16 @@ export const uploadImage = async (
     throw new Error('Invalid file type, only images are allowed');
   }
 
-  const blob = bucket.file(`niger-secureng/${location}.${extension}`);
+  const filePath = `niger-secureng/${location}.${extension}`;
+
+  // check if the file already exists
+  const fileExists = await bucket.file(filePath).exists();
+
+  if (fileExists[0]) {
+    throw new Error("File with the same name already exists");
+  }
+
+  const blob = bucket.file(filePath);
   const blobStream = blob.createWriteStream({
     resumable: false,
     public: true,
