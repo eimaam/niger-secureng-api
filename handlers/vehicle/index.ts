@@ -27,7 +27,6 @@ import {
   getDaysOwing,
   isOwingTax,
 } from "../../utils";
-import { LGA } from "../../models/Lga";
 import { uploadImage } from "../../services/googlecloud.service";
 import { body, param, validationResult } from "express-validator";
 import { BUCKET_STORAGE_LOCATION } from "../../utils/config";
@@ -294,11 +293,10 @@ export class Vehicles {
 
       if (vehicleOwner) {
         try {
-          const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${(vehicleOwner as IVehicleOwner)?._id}`;
-          const imageUrl = await uploadImage(
-            imageFile,
-            location
-          );
+          const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${
+            (vehicleOwner as IVehicleOwner)?._id
+          }`;
+          const imageUrl = await uploadImage(imageFile, location);
 
           if (!imageUrl) {
             throw new Error("Error uploading vehicle owner's image");
@@ -632,10 +630,12 @@ export class Vehicles {
     // const newOwnerData: IVehicleOwner = req.body;
     const {
       licensePlateNumber,
+      chassisNumber,
       newOwnerData,
       newOwnerId, // if new owner already exists, simply pass the new owner's ID and we have the data in db
     }: {
       licensePlateNumber: string;
+      chassisNumber: string;
       newOwnerData: IVehicleOwner;
       newOwnerId: mongoose.Types.ObjectId | string | null;
     } = req.body;
@@ -663,6 +663,7 @@ export class Vehicles {
     // validate requests
     await param("vehicleId").notEmpty().isMongoId().run(req);
     await body("licensePlateNumber").optional().isString().run(req);
+    await body("chassisNumber").optional().isString().run(req);
     await body("newOwnerId").optional().isMongoId().run(req);
     await body("newOwnerData").optional().isJSON().run(req);
 
@@ -713,16 +714,46 @@ export class Vehicles {
               "Vehicle does not have update quota. Kindly generate an Invoice and pay for update quota",
           };
         }
+        // check if newOwnerId is the same as the current vehicle's owner's ID and return error
+        if ((vehicle as any)?.owner?._id.toString() === newOwnerId) {
+          throw {
+            code: 400,
+            message:
+              "Cannot register vehicle to the same owner. Use the Vehicle Edit feature if you need to just update the vehicle details",
+          };
+        }
+
+        // if license plate number and chassis number are to be changed, ensure they do not already exist
+        let existingVehicle: IVehicle | null = null;
+        if (licensePlateNumber || chassisNumber) {
+          const query: any = {};
+          if (licensePlateNumber) query.licensePlateNumber = licensePlateNumber;
+          if (chassisNumber) query.chassisNumber = chassisNumber;
+
+          existingVehicle = await Vehicle.findOne({
+            $or: Object.keys(query).map((key) => ({
+              [key]: query[key],
+              _id: { $ne: vehicleId },
+            })),
+          }).session(session);
+        }
+
+        if (existingVehicle) {
+          throw {
+            code: 400,
+            message:
+              "Vehicle with same Chassis or Licence Plate already registered",
+          };
+        }
 
         let newVehicleOwnerId: mongoose.Types.ObjectId | string | null =
           newOwnerId;
 
-        if (newOwnerId && !newOwnerData) {
+          if (newOwnerId && !newOwnerData) {
           // verify the owner Id > check if the owner exists
           const existingOwner = await VehicleOwner.findById(newOwnerId).session(
             session
           );
-
           if (!existingOwner) {
             throw {
               code: 404,
@@ -774,73 +805,145 @@ export class Vehicles {
           newVehicleOwnerId = newVehicleOwner[0]._id as mongoose.Types.ObjectId;
         }
 
-        const newVehicleData = {
-          licensePlateNumber: licensePlateNumber || vehicle.licensePlateNumber,
-          owner: newVehicleOwnerId,
-        };
+        // if chassis number is changed, register a new vehicle, keep the old one as it is and only remove the vehicle identity code from the old vehicle
+        // as the new vehicle will now have the old's identity code
+        // keeping the old for audit purposes and to avoid any issues with the old vehicle's data (might get referenced in other places or try registering later)
+        let targetVehicle: IVehicle | null = null;
+        if (chassisNumber && vehicle.chassisNumber !== chassisNumber) {
+          const originalIdentityCode = vehicle.identityCode;
+          const originalLicensePlateNumber = vehicle.licensePlateNumber;
+          const { _id, ...vehicleDataWithoutId } = vehicle.toObject();
 
-        if (!newVehicleData.owner) {
-          throw {
-            code: 400,
-            message: "Server Error: Required fields are missing on new vehicle",
-          };
-        }
-
-        // update vehicle
-        const updatedVehicle = await Vehicle.findByIdAndUpdate(
-          vehicleId,
-          {
-            ...newVehicleData,
-          },
-          { new: true, runValidators: true, session }
-        );
-
-        if (!updatedVehicle) {
-          throw {
-            code: 500,
-            message: "Failed to update Vehicle",
-          };
-        }
-
-        // remove vehicle from old owner's list
-        const removeVehicleFromOwnersList =
-          await VehicleOwner.findByIdAndUpdate(
-            vehicle.owner,
+          // remove identity code from old vehicle
+          const updatedVehicle = await Vehicle.findByIdAndUpdate(
+            vehicleId,
             {
-              $pull: {
+              $unset: { 
+                identityCode: "",
+                existingId: "",
+                ...(licensePlateNumber ? {} : { licensePlateNumber: "" }),
+              }
+            },
+            { session, new: true }
+          );
+
+
+// Throw if update failed
+if (updatedVehicle.identityCode) {
+  throw new Error('Failed to remove identityCode from vehicle');
+}
+          // register a new vehicle
+          const newVehicleData = {
+            ...vehicleDataWithoutId,
+            identityCode: originalIdentityCode,
+            // If new licensePlate provided, use it
+  // If no new licensePlate, use the original one
+            licensePlateNumber: licensePlateNumber || originalLicensePlateNumber,
+            chassisNumber,
+            downloadQuota: [],
+            owner: newVehicleOwnerId,
+            createdBy: userId,
+            _id: new mongoose.Types.ObjectId(),
+          };
+
+          if (!newVehicleData.owner) {
+            throw {
+              code: 400,
+              message: "New Owner ID is required",
+            };
+          }
+
+          const newVehicle = (
+            await Vehicle.create([newVehicleData], {
+              session,
+            })
+          )[0];
+
+          if (!newVehicle) {
+            throw {
+              code: 500,
+              message: "Error creating new vehicle",
+            };
+          }
+
+          targetVehicle = newVehicle;
+        } else {
+          // update vehicle
+          const updatedVehicle = await Vehicle.findByIdAndUpdate(
+            vehicleId,
+            {
+              licensePlateNumber:
+                licensePlateNumber || vehicle.licensePlateNumber,
+              owner: newVehicleOwnerId,
+            },
+            { new: true, runValidators: true, session }
+          );
+
+          if (!updatedVehicle) {
+            throw {
+              code: 500,
+              message: "Failed to update Vehicle",
+            };
+          }
+
+          targetVehicle = updatedVehicle;
+
+          // remove vehicle from old owner's list
+          const removeVehicleFromOwnersList =
+            await VehicleOwner.findByIdAndUpdate(
+              vehicle.owner,
+              {
+                $pull: {
+                  vehicles: vehicle?._id,
+                },
+              },
+              { new: true, runValidators: true, session }
+            );
+
+          if (!removeVehicleFromOwnersList) {
+            throw {
+              code: 500,
+              message: "Failed to update Vehicle Owner",
+            };
+          }
+
+          // transfer vehicle to new owner
+          const addVehicleToOwnersList = await VehicleOwner.findByIdAndUpdate(
+            newVehicleOwnerId,
+            {
+              $push: {
                 vehicles: vehicle?._id,
               },
             },
             { new: true, runValidators: true, session }
           );
 
-        if (!removeVehicleFromOwnersList) {
-          throw {
-            code: 500,
-            message: "Failed to update Vehicle Owner",
-          };
+          if (!addVehicleToOwnersList) {
+            throw {
+              code: 500,
+              message: "Failed to update Vehicle Owner",
+            };
+          }
+
         }
 
-        // transfer vehicle to new owner
-        const addVehicleToOwnersList = await VehicleOwner.findByIdAndUpdate(
-          newVehicleOwnerId,
-          {
-            $push: {
-              vehicles: vehicle?._id,
-            },
-          },
-          { new: true, runValidators: true, session }
-        );
-
-        if (!addVehicleToOwnersList) {
-          throw {
-            code: 500,
-            message: "Failed to update Vehicle Owner",
-          };
-        }
-
-        // process the image upload
+        // process the image upload if new owner is unregistered
         try {
+          // update the vehicle's update quota
+          const updateQuota = await VehicleService.updateVehicleQuota({
+            vehicleId: vehicleId,
+            paymentTypeId: vehicleUpdateQuotaPaymentType._id,
+            numberOfQuotas: -1,
+            session,
+          });
+
+          if (!updateQuota) {
+            throw {
+              code: 500,
+              message: "Failed to update Vehicle's update quota",
+            };
+          }
+
           if (isUnregisteredOwner && imageFile) {
             const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${newVehicleOwnerId}`;
             const imageUrl = await uploadImage(
@@ -901,7 +1004,7 @@ export class Vehicles {
           };
         }
 
-        return updatedVehicle;
+        return targetVehicle;
       });
 
       return res.status(200).json({
@@ -1296,13 +1399,8 @@ export class Vehicles {
     const { id } = req.params;
     const updateData: Partial<IVehicle> = req.body;
 
-    const {
-      vehicleType,
-      licensePlateNumber,
-      chassisNumber,
-      lga,
-      owner,
-    } = updateData;
+    const { vehicleType, licensePlateNumber, chassisNumber, lga, owner } =
+      updateData;
 
     const formattedData = {
       vehicleType,
@@ -1392,22 +1490,22 @@ export class Vehicles {
           };
         }
 
-       // Ensure no other vehicle has the same license plate number or chassis number
-       const query: any = { _id: { $ne: id } };
-       if (licensePlateNumber) {
-         query.licensePlateNumber = licensePlateNumber;
-       }
-       if (chassisNumber) {
-         query.chassisNumber = chassisNumber;
-       }
+        // Ensure no other vehicle has the same license plate number or chassis number
+        const query: any = { _id: { $ne: id } };
+        if (licensePlateNumber) {
+          query.licensePlateNumber = licensePlateNumber;
+        }
+        if (chassisNumber) {
+          query.chassisNumber = chassisNumber;
+        }
 
-       const existingVehicle = await Vehicle.findOne({
-         $or: [
-           { licensePlateNumber: query.licensePlateNumber },
-           { chassisNumber: query.chassisNumber },
-         ],
-         _id: query._id,
-       }).session(session);
+        const existingVehicle = await Vehicle.findOne({
+          $or: [
+            { licensePlateNumber: query.licensePlateNumber },
+            { chassisNumber: query.chassisNumber },
+          ],
+          _id: query._id,
+        }).session(session);
 
         if (existingVehicle) {
           throw {
@@ -1470,12 +1568,11 @@ export class Vehicles {
         }
 
         let SELECTED_UNIT_TYPE = targetVehicleUnit.taxType;
-        
+
         // generate new identity code if unit is changed
         const currentUnit = new mongoose.Types.ObjectId(targetVehicle.unit);
 
-       
-          data = formattedData;
+        data = formattedData;
 
         // Validate/Check for existing owner and update if owner data is provided
         if (owner) {
@@ -1495,47 +1592,48 @@ export class Vehicles {
             }
 
             const checkDuplicateEmail = owner.email
-            ? await VehicleOwner.findOne({
-              email: owner.email,
-              _id: { $ne: existingOwner._id },
-            }).session(session)
-            : null;
+              ? await VehicleOwner.findOne({
+                  email: owner.email,
+                  _id: { $ne: existingOwner._id },
+                }).session(session)
+              : null;
 
-          if (checkDuplicateEmail) {
-            throw {
-            code: 400,
-            message: "Vehicle Owner with same Email already registered",
-            };
-          }
+            if (checkDuplicateEmail) {
+              throw {
+                code: 400,
+                message: "Vehicle Owner with same Email already registered",
+              };
+            }
 
-          const checkDuplicateNIN = owner.nin
-            ? await VehicleOwner.findOne({
-              nin: owner.nin,
-              _id: { $ne: existingOwner._id },
-            }).session(session)
-            : null;
+            const checkDuplicateNIN = owner.nin
+              ? await VehicleOwner.findOne({
+                  nin: owner.nin,
+                  _id: { $ne: existingOwner._id },
+                }).session(session)
+              : null;
 
-          if (checkDuplicateNIN) {
-            throw {
-            code: 400,
-            message: "Vehicle Owner with same NIN already registered. Use the Transfer Ownership page if this is a vehicle transfer",
-            };
-          }
+            if (checkDuplicateNIN) {
+              throw {
+                code: 400,
+                message:
+                  "Vehicle Owner with same NIN already registered. Use the Transfer Ownership page if this is a vehicle transfer",
+              };
+            }
 
-          const checkDuplicatePhone = owner.phoneNumber
-            ? await VehicleOwner.findOne({
-              phoneNumber: owner.phoneNumber,
-              _id: { $ne: existingOwner._id },
-            }).session(session)
-            : null;
+            const checkDuplicatePhone = owner.phoneNumber
+              ? await VehicleOwner.findOne({
+                  phoneNumber: owner.phoneNumber,
+                  _id: { $ne: existingOwner._id },
+                }).session(session)
+              : null;
 
-          if (checkDuplicatePhone) {
-            throw {
-              code: 400,
-              message:
-                "Vehicle Owner with same Phone Number already registered. Use the Transfer Ownership page if this is a vehicle transfer",
-            };
-          }
+            if (checkDuplicatePhone) {
+              throw {
+                code: 400,
+                message:
+                  "Vehicle Owner with same Phone Number already registered. Use the Transfer Ownership page if this is a vehicle transfer",
+              };
+            }
 
             const updatedOwner = await VehicleOwner.findByIdAndUpdate(
               existingOwner._id,
