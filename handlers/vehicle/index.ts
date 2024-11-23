@@ -842,9 +842,10 @@ export class Vehicles {
         // process the image upload
         try {
           if (isUnregisteredOwner && imageFile) {
+            const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${newVehicleOwnerId}`;
             const imageUrl = await uploadImage(
               imageFile,
-              `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${newVehicleOwnerId}.png`
+              location
             );
             // Update owner with image URL
             const imageUpdate = await VehicleOwner.findByIdAndUpdate(
