@@ -1300,9 +1300,6 @@ export class Vehicles {
       licensePlateNumber,
       chassisNumber,
       lga,
-      association,
-      unit,
-      subUnit,
       owner,
     } = updateData;
 
@@ -1311,35 +1308,8 @@ export class Vehicles {
       licensePlateNumber,
       chassisNumber,
       lga,
-      association,
-      unit,
-      subUnit,
       owner,
     };
-
-    if (unit && (!association || !vehicleType)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Unit cannot be updated without association or vehicle type updated as well",
-      });
-    }
-
-    if (association && (!vehicleType || !unit)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Payment Types do not match! Association cannot be updated without updating vehicle type & unit as well.",
-      });
-    }
-
-    if (vehicleType && (!unit || !association)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Payment Types do not match! Association and Unit must be of same type as Vehicle Type",
-      });
-    }
 
     // field validation
     const validateVehicleData = [
@@ -1421,14 +1391,22 @@ export class Vehicles {
           };
         }
 
-        // Ensure no other vehicle has the same license plate number or chassis number
-        const existingVehicle = await Vehicle.findOne({
-          $or: [
-            { licensePlateNumber: licensePlateNumber },
-            { chassisNumber: chassisNumber },
-          ],
-          _id: { $ne: id },
-        }).session(session);
+       // Ensure no other vehicle has the same license plate number or chassis number
+       const query: any = { _id: { $ne: id } };
+       if (licensePlateNumber) {
+         query.licensePlateNumber = licensePlateNumber;
+       }
+       if (chassisNumber) {
+         query.chassisNumber = chassisNumber;
+       }
+
+       const existingVehicle = await Vehicle.findOne({
+         $or: [
+           { licensePlateNumber: query.licensePlateNumber },
+           { chassisNumber: query.chassisNumber },
+         ],
+         _id: query._id,
+       }).session(session);
 
         if (existingVehicle) {
           throw {
@@ -1469,21 +1447,6 @@ export class Vehicles {
         let SELECTED_ASSOCIATION_TYPE = targetVehicleAssociation.type;
 
         // validate association and vehicle type- ensuring association type is same as vehicle type
-        if (association) {
-          const existingAssociation = await AssociationModel.findById(
-            association
-          ).session(session);
-
-          if (!existingAssociation) {
-            throw {
-              code: 404,
-              message: "Association does not exist",
-            };
-          }
-          SELECTED_ASSOCIATION_TYPE = existingAssociation.type;
-        }
-
-        // validate association and vehicle type- ensuring association type is same as vehicle type
         if (
           SELECTED_ASSOCIATION_TYPE.toString() !==
           EXISTING_VEHICLE_TYPE.toString()
@@ -1506,55 +1469,12 @@ export class Vehicles {
         }
 
         let SELECTED_UNIT_TYPE = targetVehicleUnit.taxType;
-
-        // validate unit and vehicle type- ensuring unit type is same as vehicle type
-        if (unit) {
-          const existingUnit = await UnitModel.findById(unit).session(session);
-
-          if (!existingUnit) {
-            throw {
-              code: 404,
-              message: "Unit does not exist",
-            };
-          }
-          SELECTED_UNIT_TYPE = existingUnit.taxType;
-        }
-        // validate unit and vehicle type- ensuring unit type is same as vehicle type
-        if (
-          SELECTED_UNIT_TYPE.toString() !== EXISTING_VEHICLE_TYPE.toString()
-        ) {
-          throw {
-            code: 400,
-            message: "Unit and Vehicle Type do not match",
-          };
-        }
-
+        
         // generate new identity code if unit is changed
         const currentUnit = new mongoose.Types.ObjectId(targetVehicle.unit);
-        const bodyUnit = new mongoose.Types.ObjectId(unit);
 
-        if (unit && !currentUnit.equals(bodyUnit)) {
-          const existingUnit = await UnitModel.findById(unit).session(session);
-
-          const totalVehiclesInSameUnit =
-            await VehicleService.getTotalNumberOfVehiclesInSameUnit(
-              existingUnit._id,
-              session
-            );
-
-          // Auto generate identity code based on unit code and number of vehicles in the unit
-          const generatedIdentityCode = generateIdentityCode(
-            existingUnit.code,
-            totalVehiclesInSameUnit
-          );
-
-          data = {
-            ...formattedData,
-            identityCode: generatedIdentityCode,
-          };
-        } else {
+       
           data = formattedData;
-        }
 
         // Validate/Check for existing owner and update if owner data is provided
         if (owner) {
@@ -1573,42 +1493,48 @@ export class Vehicles {
               };
             }
 
-            const checkDuplicateEmail = await VehicleOwner.findOne({
+            const checkDuplicateEmail = owner.email
+            ? await VehicleOwner.findOne({
               email: owner.email,
               _id: { $ne: existingOwner._id },
-            }).session(session);
+            }).session(session)
+            : null;
 
-            if (checkDuplicateEmail) {
-              throw {
-                code: 400,
-                message: "Vehicle Owner with same Email already registered",
-              };
-            }
+          if (checkDuplicateEmail) {
+            throw {
+            code: 400,
+            message: "Vehicle Owner with same Email already registered",
+            };
+          }
 
-            const checkDuplicateNIN = await VehicleOwner.findOne({
+          const checkDuplicateNIN = owner.nin
+            ? await VehicleOwner.findOne({
               nin: owner.nin,
               _id: { $ne: existingOwner._id },
-            }).session(session);
+            }).session(session)
+            : null;
 
-            if (checkDuplicateNIN) {
-              throw {
-                code: 400,
-                message: "Vehicle Owner with same NIN already registered",
-              };
-            }
+          if (checkDuplicateNIN) {
+            throw {
+            code: 400,
+            message: "Vehicle Owner with same NIN already registered",
+            };
+          }
 
-            const checkDuplicatePhone = await VehicleOwner.findOne({
+          const checkDuplicatePhone = owner.phoneNumber
+            ? await VehicleOwner.findOne({
               phoneNumber: owner.phoneNumber,
               _id: { $ne: existingOwner._id },
-            }).session(session);
+            }).session(session)
+            : null;
 
-            if (checkDuplicatePhone) {
-              throw {
-                code: 400,
-                message:
-                  "Vehicle Owner with same Phone Number already registered",
-              };
-            }
+          if (checkDuplicatePhone) {
+            throw {
+              code: 400,
+              message:
+                "Vehicle Owner with same Phone Number already registered",
+            };
+          }
 
             const updatedOwner = await VehicleOwner.findByIdAndUpdate(
               existingOwner._id,
