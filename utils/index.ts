@@ -18,6 +18,7 @@ import { FundingWalletModel } from "../models/Wallet";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import bcrypt from "bcrypt";
+import crypto from 'crypto';
 
 // MONNIFY >>
 export const MONNIFY = {
@@ -158,13 +159,22 @@ export const getDateRange = (
  * @returns {string} Unique reference string.
  */
 export function generateUniqueReference(id?: string): string {
-  const timestamp = Date.now(); // Current timestamp in milliseconds
-  const uniqueId = uuidv4(); // Use the full UUID for better uniqueness
-  const randomNum = Math.floor(Math.random() * 1000000); // Larger range for the random number
-  return id
-    ? `${id}-${timestamp}-${uniqueId}-${randomNum}`
-    : `${timestamp}-${uniqueId}-${randomNum}`;
+  const timestamp = Date.now().toString(36); // Base-36 encoded timestamp (shorter and still unique)
+  const randomNum = Math.random().toString(36).substring(2, 10); // Random alphanumeric string
+  const hash = crypto.randomBytes(3).toString('hex'); // Short random hash (6 characters)
+
+  let reference = `${timestamp}-${randomNum}-${hash}`;
+
+  if (id) {
+    // Add `id` ensuring total length does not exceed 64
+    const maxIdLength = 64 - reference.length - 1; // Account for `-`
+    const truncatedId = id.substring(0, maxIdLength);
+    reference = `${truncatedId}-${reference}`;
+  }
+
+  return reference.substring(0, 64); // Ensure final output is at most 64 characters
 }
+
 
 
 export function extractIdFromReference(reference: string): string | null {
