@@ -1,5 +1,5 @@
 export const emailTemplates = {
-    PASSWORD_RESET_CODE: (code: string) => `
+  PASSWORD_RESET_CODE: (code: string) => `
         <!DOCTYPE html>
         <html>
         <head>
@@ -40,7 +40,7 @@ export const emailTemplates = {
         </body>
         </html>
     `,
-    PASSWORD_RESET_LINK: (resetLink: string) => `
+  PASSWORD_RESET_LINK: (resetLink: string) => `
         <!DOCTYPE html>
         <html>
         <head>
@@ -52,6 +52,7 @@ export const emailTemplates = {
                 .content { background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
                 .code { background: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0; border-radius: 4px; }
                 .btn { display: inline-block; padding: 12px 24px; background: #2563eb; color: black; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+                .link-text { word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 20px 0; font-size: 14px; }
                 .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
             </style>
         </head>
@@ -68,6 +69,11 @@ export const emailTemplates = {
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="${resetLink}" class="btn">Reset Password</a>
                     </div>
+
+                    <p style="color: #475569;">If the button above doesn't work, copy and paste this link into your browser:</p>
+                     <div class="link-text">
+                      ${resetLink}
+                    </div>
                     
                     <p style="color: #475569;">This link will expire in <strong>30 mins</strong>. If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
                     
@@ -80,5 +86,5 @@ export const emailTemplates = {
             </div>
         </body>
         </html>
-    `
-}
+    `,
+};
