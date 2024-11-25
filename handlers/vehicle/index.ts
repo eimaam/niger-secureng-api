@@ -714,14 +714,6 @@ export class Vehicles {
               "Vehicle does not have update quota. Kindly generate an Invoice and pay for update quota",
           };
         }
-        // check if newOwnerId is the same as the current vehicle's owner's ID and return error
-        if ((vehicle as any)?.owner?._id.toString() === newOwnerId) {
-          throw {
-            code: 400,
-            message:
-              "Cannot register vehicle to the same owner. Use the Vehicle Edit feature if you need to just update the vehicle details",
-          };
-        }
 
         // if license plate number and chassis number are to be changed, ensure they do not already exist
         let existingVehicle: IVehicle | null = null;
