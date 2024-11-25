@@ -1580,17 +1580,6 @@ if (updatedVehicle.identityCode) {
         }
         let SELECTED_ASSOCIATION_TYPE = targetVehicleAssociation.type;
 
-        // validate association and vehicle type- ensuring association type is same as vehicle type
-        if (
-          SELECTED_ASSOCIATION_TYPE.toString() !==
-          EXISTING_VEHICLE_TYPE.toString()
-        ) {
-          throw {
-            code: 400,
-            message: "Association and Vehicle Type do not match",
-          };
-        }
-
         const targetVehicleUnit = await UnitModel.findById(
           targetVehicle.unit
         ).session(session);
