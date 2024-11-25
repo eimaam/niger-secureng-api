@@ -30,6 +30,7 @@ import {
 import { uploadImage } from "../../services/googlecloud.service";
 import { body, param, validationResult } from "express-validator";
 import { BUCKET_STORAGE_LOCATION } from "../../utils/config";
+import moment from 'moment-timezone';
 
 interface IVehicleRequest extends IVehicle {
   ownerId: mongoose.Types.ObjectId | string;
@@ -1393,6 +1394,28 @@ if (updatedVehicle.identityCode) {
         });
       }
 
+      vehicles = vehicles.map((vehicle) => {
+        const startOfToday = moment().startOf('day').toDate();
+        let { taxPaidUntil, dateSetInactive } = vehicle;
+        
+        // If the vehicle was inactive, adjust the taxPaidUntil date
+        if (dateSetInactive && taxPaidUntil) {
+          const inactiveDays = moment().diff(moment(dateSetInactive), 'days');
+          taxPaidUntil = moment(taxPaidUntil).add(inactiveDays, 'days').toDate();
+        }
+        
+        const daysOwing = taxPaidUntil && taxPaidUntil < startOfToday
+          ? Math.ceil(moment(startOfToday).diff(moment(taxPaidUntil), 'days', true))
+          : 0;
+        const hasPaidForToday = taxPaidUntil && taxPaidUntil >= startOfToday;
+    
+        return {
+          ...vehicle.toObject(),
+          daysOwing,
+          hasPaidForToday,
+        };
+      });
+
       return res.status(200).json({
         success: true,
         message: "Vehicles fetched successfully",
@@ -2125,6 +2148,7 @@ if (updatedVehicle.identityCode) {
             select: "name",
           });
       }
+      
 
       if (!vehicle) {
         return res.status(404).json({
@@ -2134,7 +2158,7 @@ if (updatedVehicle.identityCode) {
       }
 
       const IS_OWING = isOwingTax(vehicle?.taxPaidUntil);
-      const DAYS_OWING = getDaysOwing(vehicle?.taxPaidUntil);
+      const DAYS_OWING = getDaysOwing(vehicle?.taxPaidUntil, vehicle?.dateSetInactive);
 
       return res.status(200).json({
         success: true,

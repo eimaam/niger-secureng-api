@@ -31,7 +31,7 @@ export class Transactions {
       const transaction = await TransactionModel.findById(transactionId)
         .populate({
           path: "vehicle",
-          select: "identityCode licensePlateNumber",
+          select: "identityCode licensePlateNumber status",
         })
         .populate({
           path: "type",
@@ -46,8 +46,6 @@ export class Transactions {
         });
       }
 
-      console.log({ transaction });
-
       const vehicle = await Vehicle.findById(transaction.vehicle);
 
       if (!vehicle) {
@@ -58,7 +56,7 @@ export class Transactions {
       }
 
       const IS_OWING = isOwingTax(vehicle?.taxPaidUntil);
-      const DAYS_OWING = getDaysOwing(vehicle?.taxPaidUntil);
+      const DAYS_OWING = getDaysOwing(vehicle?.taxPaidUntil, vehicle?.dateSetInactive);
 
       // Calculate the "Not Valid After" date
       const notValidAfterDate = new Date(transaction.date);

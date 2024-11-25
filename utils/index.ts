@@ -239,14 +239,28 @@ export const isOwingTax = (taxPaidUntil: Date | null): boolean => {
  * @param {Date} startOfToday - The start of today's date.
  * @returns {number} - Returns the number of days the vehicle is owing tax.
  */
-export const getDaysOwing = (taxPaidUntil: Date | null): number => {
-  if (taxPaidUntil !== null && taxPaidUntil < startOfToday) {
-    return Math.ceil(
-      (startOfToday.getTime() - taxPaidUntil.getTime()) / (1000 * 60 * 60 * 24)
-    );
+export const getDaysOwing = (
+  taxPaidUntil: Date | null,
+  dateSetInactive: Date | null
+): number => {
+  const startOfToday = moment().startOf("day").toDate();
+
+  if (dateSetInactive && taxPaidUntil) {
+    const inactiveDays = moment().diff(moment(dateSetInactive), "days");
+    taxPaidUntil = moment(taxPaidUntil).add(inactiveDays, "days").toDate();
   }
-  return 0;
+
+  const daysOwing =
+    taxPaidUntil && taxPaidUntil < startOfToday
+      ? Math.ceil(moment(startOfToday).diff(moment(taxPaidUntil), "days", true))
+      : 0;
+
+  return daysOwing
 };
+
+export const hasPaidForToday = (taxPaidUntil: Date | null): boolean => {
+  return taxPaidUntil !== null && taxPaidUntil >= startOfToday;
+}
 
 
 /**
