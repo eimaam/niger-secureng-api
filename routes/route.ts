@@ -35,6 +35,10 @@ import { VehicleService } from "../services/vehicle.service";
 import mongoose from "mongoose";
 import { Transactions } from "../handlers/transaction";
 import { SubUnits } from "../handlers/sub-unit";
+import { resetPasswordValidator } from "../middlewares/validators/reset-password.validator";
+import { handleValidationErrors } from "../middlewares/requestValidator";
+import { forgotPasswordLimiter } from "../middlewares/api.limiters";
+import { emailValidator } from "../middlewares/validators/email.validator";
 
 const route = Router();
 
@@ -47,6 +51,8 @@ route.get("/healthcheck", async (_req, res) => {
 
 // auth
 route.post("/auth/login", Auth.login);
+route.post("/auth/forgot-password", forgotPasswordLimiter, emailValidator, handleValidationErrors, Auth.forgotPassword);
+route.post("/auth/reset-password", resetPasswordValidator, handleValidationErrors, Auth.resetPassword);
 
 //user
 route.post("/user", checkRole(), User.create);
@@ -103,7 +109,7 @@ route.get(
 // so adding a the route here but setting it to navigate to the frontend page with the id for the verification
 route.get("/vehicle/qr/public/:vehicleId", (req: Request, res: Response) => {
   res.redirect(
-    `${Config.DOMAIN_URL}/vehicle/qr/public/${req.params.vehicleId}`
+    `${Config.FRONTEND_URL}/vehicle/qr/public/${req.params.vehicleId}`
   );
 });
 // main vehicle qr route

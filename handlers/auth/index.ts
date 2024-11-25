@@ -7,6 +7,12 @@ import { withMongoTransaction } from "../../utils/mongoTransaction";
 import { WalletService } from "../../services/wallet.service";
 import { FundingWalletModel, WalletTypeEnum } from "../../models/Wallet";
 import { PaymentDetailsModel } from "../../models/PaymentDetail";
+import { Config } from "../../utils/config";
+import { EmailService } from "../../services/email.service";
+import { hashData } from "../../utils";
+import crypto from "crypto";
+import { AccountService } from "../../services/account.service";
+import { TokenService } from "../../services/token.service";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const JWT_EXPIRY = process.env.JWT_EXPIRY as string;
@@ -38,11 +44,9 @@ export class Auth {
             message: "Invalid email or password",
           };
         }
-        
+
         // return error if user account is not active or is suspended
-        if (
-          user.status === AccountStatusEnum.SUSPENDED
-        ) {
+        if (user.status === AccountStatusEnum.SUSPENDED) {
           throw {
             code: 400,
             message: "Account is suspended or inactive",
@@ -87,13 +91,90 @@ export class Auth {
         .status(200)
         .json({ success: true, message: "Login successful", data: result });
     } catch (error: any) {
-      return res
-        .status(500)
-        .json({
+      return res.status(500).json({
+        success: false,
+        message: "Error logging in",
+        error: error?.message,
+      });
+    }
+  }
+
+  static async forgotPassword(req: Request, res: Response) {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    try {
+      const user = await UserModel.findOne({ email });
+
+      if (!user) {
+        return res.status(400).json({
           success: false,
-          message: "Error logging in",
-          error: error?.message,
+          message: "Account not found",
         });
+      }
+
+      const passwordReset = await AccountService.initiatePasswordReset(
+        user._id
+      );
+
+      if (!passwordReset) {
+        return res.status(400).json({
+          success: false,
+          message: "Error sending password reset link",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Password reset link sent to email",
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error sending password reset link",
+        error: error?.message,
+      });
+    }
+  }
+
+  static async resetPassword(req: Request, res: Response) {
+    const { token, password } = req.body;
+
+    try {
+      const hashedToken = await TokenService.cryptoTokenHash(token);
+      const user = await AccountService.findAccountWithPasswordResetToken(
+        hashedToken
+      );
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // reset password
+      const updatedUser = await AccountService.resetPassword({
+        email: user.email,
+        token: hashedToken,
+        password,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Password reset successful",
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error resetting password",
+        error: error?.message,
+      });
     }
   }
 }

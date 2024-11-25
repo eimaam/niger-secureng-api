@@ -7,6 +7,8 @@ export interface IUser extends Document {
   password: string;
   role: RoleName.SuperAdmin;
   isDefaultPassword: boolean;
+  passwordResetToken?: string;
+  passwordResetTokenExpiry?: Date;
   status: AccountStatusEnum;
   createdBy: Types.ObjectId;
 }
