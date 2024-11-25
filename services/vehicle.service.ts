@@ -161,7 +161,7 @@ export class VehicleService {
         vehicle.dateSetInactive = undefined;
 
         // If the taxPaidUntil date is in the past, set it to today
-        if (!vehicle.taxPaidUntil || vehicle.taxPaidUntil < new Date()) {
+        if (!vehicle.taxPaidUntil) {
           vehicle.taxPaidUntil = moment()
             .tz("Africa/Lagos")
             .startOf("day")
