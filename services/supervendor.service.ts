@@ -67,7 +67,7 @@ export class SuperVendorService {
         vendor.userId as mongoose.Types.ObjectId,
         vendor?.superVendor,
         generateUniqueReference(vendorId as string),
-        "Super Vendor Balance Transfer",
+        "Vendor to Super Vendor Balance Transfer",
         PaymentStatusEnum.SUCCESSFUL,
         vendor.superVendor as mongoose.Types.ObjectId,
         mongoSession as ClientSession
@@ -85,7 +85,7 @@ export class SuperVendorService {
         vendor?.userId as mongoose.Types.ObjectId,
         vendor?.superVendor,
         generateUniqueReference(vendorId as string),
-        "Super Vendor Balance Transfer",
+        "Vendor to Super Vendor Balance Transfer",
         PaymentStatusEnum.SUCCESSFUL,
         vendor.superVendor as mongoose.Types.ObjectId,
         mongoSession as ClientSession
