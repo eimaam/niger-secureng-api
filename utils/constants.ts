@@ -2,6 +2,8 @@ import moment from "moment-timezone";
 
 export const unauthenticatedRoutes: (string | RegExp)[] = [
   "/api/v1/auth/login",
+  "/api/v1/auth/forgot-password",
+  "/api/v1/auth/reset-password",
   "/api/v1/healthcheck",
   "/api/v1/webhook/funding",
   "/api/v1/webhook/disbursement",
@@ -50,4 +52,9 @@ export const WEBHOOK_RATE_LIMIT = {
   MESSAGE: 'Too many webhook requests from this IP, please try again later.',
   STANDARD_HEADERS: true,
   LEGACY_HEADERS: false,
+};
+
+export const EMAIL_SUBJECTS = {
+  PASSWORD_RESET: "Password Reset",
+  ACCOUNT_ACTIVATION: "Account Activation",
 };

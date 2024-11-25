@@ -21,6 +21,8 @@ const userSchema = new Schema<IUser>(
       default: AccountStatusEnum.INACTIVE,
     },
     password: { type: String, required: true, minlength: 6 },
+    passwordResetToken: { type: String, unique: true, sparse: true,  },
+    passwordResetTokenExpiry: { type: Date },
     role: { type: String, enum: Object.values(RoleName), required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     isDefaultPassword: { type: Boolean, default: true },
