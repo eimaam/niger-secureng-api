@@ -18,7 +18,7 @@ import { FundingWalletModel } from "../models/Wallet";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import bcrypt from "bcrypt";
-import crypto from 'crypto';
+import crypto from "crypto";
 
 // MONNIFY >>
 export const MONNIFY = {
@@ -29,7 +29,7 @@ export const MONNIFY = {
  * Generates a random password of 8 characters long from a charset of alphanumeric characters.
  * @returns {string} - The generated password.
  */
-export const generatePassword = () : string => {
+export const generatePassword = (): string => {
   const length = 8;
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -133,8 +133,7 @@ export const getDateRange = (
       if (year) {
         startDate = startOfYear(new Date(year, 0, 1));
         endDate = endOfYear(new Date(year, 11, 31));
-      } else 
-      if (customStartDate && customEndDate) {
+      } else if (customStartDate && customEndDate) {
         startDate = startOfDay(customStartDate);
         endDate = endOfDay(customEndDate);
       } else {
@@ -161,7 +160,7 @@ export const getDateRange = (
 export function generateUniqueReference(id?: string): string {
   const timestamp = Date.now().toString(36); // Base-36 encoded timestamp (shorter and still unique)
   const randomNum = Math.random().toString(36).substring(2, 10); // Random alphanumeric string
-  const hash = crypto.randomBytes(3).toString('hex'); // Short random hash (6 characters)
+  const hash = crypto.randomBytes(3).toString("hex"); // Short random hash (6 characters)
 
   let reference = `${timestamp}-${randomNum}-${hash}`;
 
@@ -174,8 +173,6 @@ export function generateUniqueReference(id?: string): string {
 
   return reference.substring(0, 64); // Ensure final output is at most 64 characters
 }
-
-
 
 export function extractIdFromReference(reference: string): string | null {
   const parts = reference.split("-");
@@ -193,7 +190,7 @@ export const generateIdentityCode = (
   unitCode: string,
   totalVehiclesInSameUnit: number
 ) => {
-    const totalVehicles = totalVehiclesInSameUnit + 1;
+  const totalVehicles = totalVehiclesInSameUnit + 1;
 
   return `${unitCode}${totalVehicles}`;
 };
@@ -223,7 +220,8 @@ export async function convertImageToBase64(url: string): Promise<string> {
   const response = await axios.get(url, { responseType: "arraybuffer" });
   const buffer = Buffer.from(response.data, "binary");
 
-  const mimeType = response.headers["content-type"] || 'application/octet-stream';
+  const mimeType =
+    response.headers["content-type"] || "application/octet-stream";
 
   const base64 = buffer.toString("base64") as string;
 
@@ -244,34 +242,47 @@ export const isOwingTax = (taxPaidUntil: Date | null): boolean => {
 };
 
 /**
- * Calculates the number of days the vehicle is owing tax.
+ * Calculates the number of days the vehicle is owing tax, excluding Sundays.
  * @param {Date | null} taxPaidUntil - The date until which tax has been paid.
- * @param {Date} startOfToday - The start of today's date.
+ * @param {Date | null} dateSetInactive - The date when vehicle was set inactive.
  * @returns {number} - Returns the number of days the vehicle is owing tax.
  */
 export const getDaysOwing = (
   taxPaidUntil: Date | null,
   dateSetInactive: Date | null
 ): number => {
-  const startOfToday = moment().startOf("day").toDate();
+  const startOfToday = moment().tz("Africa/Lagos").startOf("day");
 
-  if (dateSetInactive && taxPaidUntil) {
-    const inactiveDays = moment().diff(moment(dateSetInactive), "days");
-    taxPaidUntil = moment(taxPaidUntil).add(inactiveDays, "days").toDate();
+  if (!taxPaidUntil || taxPaidUntil >= startOfToday.toDate()) {
+    return 0;
   }
 
-  const daysOwing =
-    taxPaidUntil && taxPaidUntil < startOfToday
-      ? Math.ceil(moment(startOfToday).diff(moment(taxPaidUntil), "days", true))
-      : 0;
+  let adjustedTaxPaidUntil = moment(taxPaidUntil).tz("Africa/Lagos");
 
-  return daysOwing
+  if (dateSetInactive) {
+    const inactiveDays = moment()
+      .tz("Africa/Lagos")
+      .diff(moment(dateSetInactive).tz("Africa/Lagos"), "days");
+    adjustedTaxPaidUntil = adjustedTaxPaidUntil.add(inactiveDays, "days");
+  }
+
+  let daysOwing = 0;
+  let currentDate = moment(adjustedTaxPaidUntil).tz("Africa/Lagos");
+
+  while (currentDate.isBefore(startOfToday)) {
+    if (currentDate.day() !== 0) {
+      // 0 represents Sunday
+      daysOwing++;
+    }
+    currentDate.add(1, "days");
+  }
+
+  return daysOwing;
 };
 
 export const hasPaidForToday = (taxPaidUntil: Date | null): boolean => {
   return taxPaidUntil !== null && taxPaidUntil >= startOfToday;
-}
-
+};
 
 /**
  * Hashes the given data.

@@ -25,6 +25,7 @@ import {
   convertImageToBase64,
   generateIdentityCode,
   getDaysOwing,
+  hasPaidForToday,
   isOwingTax,
 } from "../../utils";
 import { uploadImage } from "../../services/googlecloud.service";
@@ -1404,15 +1405,14 @@ if (updatedVehicle.identityCode) {
           taxPaidUntil = moment(taxPaidUntil).add(inactiveDays, 'days').toDate();
         }
         
-        const daysOwing = taxPaidUntil && taxPaidUntil < startOfToday
-          ? Math.ceil(moment(startOfToday).diff(moment(taxPaidUntil), 'days', true))
-          : 0;
-        const hasPaidForToday = taxPaidUntil && taxPaidUntil >= startOfToday;
+        const daysOwing = getDaysOwing(taxPaidUntil as Date, dateSetInactive as Date);
+        
+        const PAID_FOR_TODAY = hasPaidForToday(taxPaidUntil as Date);
     
         return {
           ...vehicle.toObject(),
           daysOwing,
-          hasPaidForToday,
+          hasPaidForToday: PAID_FOR_TODAY,
         };
       });
 
