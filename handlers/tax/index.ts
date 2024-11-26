@@ -71,11 +71,11 @@ export class Tax {
           throw new Error("Can't proceed. Vehicle is not active");
 
         // Calculate the effective tax paid until date
-        let effectiveTaxPaidUntil =
-          vehicle.taxPaidUntil || moment.utc().startOf("day").toDate();
+          let effectiveTaxPaidUntil =
+          vehicle.taxPaidUntil || moment().tz("Africa/Lagos").startOf("day").toDate();
 
         // Calculate new tax paid until date
-        const newTaxPaidUntil = moment(effectiveTaxPaidUntil)
+        const newTaxPaidUntil = moment(effectiveTaxPaidUntil).tz("Africa/Lagos")
           .add(numberOfDays, "days")
           .endOf("day")
           .toDate();
