@@ -1281,7 +1281,8 @@ if (updatedVehicle.identityCode) {
     try {
       const updatedVehicle = await VehicleService.updateVehicleStatus(
         vehicleId,
-        status
+        status,
+        req.headers["userid"] as string
       );
 
       return res.status(200).json({

@@ -5,6 +5,8 @@ import { PaymentTypeEnum, VehicleStatusEnum } from "../types";
 import moment from "moment";
 import { PaymentTypeModel } from "../models/PaymentType";
 import { VehicleOwner } from "../models/VehicleOwner";
+import { VehicleStatusLog } from "../models/VehicleStatusLog";
+import { withMongoTransaction } from "../utils/mongoTransaction";
 
 interface UpdateVehicleQuotaParams {
   vehicleId: mongoose.Types.ObjectId | string;
@@ -111,79 +113,119 @@ export class VehicleService {
 
   static async updateVehicleStatus(
     vehicleId: string,
-    status: VehicleStatusEnum
+    status: VehicleStatusEnum,
+    updatedBy: mongoose.Types.ObjectId | string,
   ) {
     if (!mongoose.isValidObjectId(vehicleId)) {
       throw new Error("Invalid vehicle ID");
     }
 
     try {
-      const vehicle: IVehicle | null = await Vehicle.findById(vehicleId);
+      const result = await withMongoTransaction(async (session) => {
 
-      if (!vehicle) {
-        throw {
-          message: "Vehicle not found",
-          status: 404,
-        };
-      }
-
-      if (vehicle.status === status) {
-        throw {
-          message: `Vehicle is already ${status.toLowerCase()}`,
-          status: 400,
-        };
-      }
-
-      // to handle cases for vehicles that the date set inactive is missing
-      if (vehicle.status === VehicleStatusEnum.INACTIVE && !vehicle.dateSetInactive){
-        throw {
-          message: "Vehicle Date Set Inactive missing. Please contact support",
-          status: 400,
-        }
-      }
-
-      if (status === VehicleStatusEnum.INACTIVE) {
-        // TODO: uncomment this if plan changes to vehicle can not be set to inactive without having to cear debts
-        // commenting it out for now as NIGER requested it shouldn't work as such
-        // Check if the vehicle has any unpaid tax
-        // if (vehicle.taxPaidUntil && vehicle.taxPaidUntil < new Date()) {
-        //   throw {
-        //     message: "Cannot set vehicle to inactive. There is unpaid tax.",
-        //     status: 400,
-        //   };
-        // }
-        vehicle.dateSetInactive = moment().tz("Africa/Lagos").toDate();
-      } else if (status === VehicleStatusEnum.ACTIVATED) {
-        // If the vehicle was inactive, adjust the taxPaidUntil date
-        if (vehicle.dateSetInactive && vehicle.taxPaidUntil) {
-          const inactiveDays = moment()
-            .tz("Africa/Lagos")
-            .diff(moment(vehicle.dateSetInactive), "days");
-          vehicle.taxPaidUntil = moment(vehicle.taxPaidUntil)
-            .tz("Africa/Lagos")
-            .add(inactiveDays, "days")
-            .toDate();
+        const vehicle: IVehicle | null = await Vehicle.findById(vehicleId);
+        
+        if (!vehicle) {
+          throw {
+            message: "Vehicle not found",
+            status: 404,
+          };
         }
 
-        // Clear the dateSetInactive as the vehicle is now active
-        vehicle.dateSetInactive = undefined;
-
-        // If the taxPaidUntil date is in the past, set it to today
-        if (!vehicle.taxPaidUntil) {
-          vehicle.taxPaidUntil = moment()
-            .tz("Africa/Lagos")
-            .startOf("day")
-            .toDate();
+        if (vehicle.status === status) {
+          throw {
+            message: `Vehicle is already ${status.toLowerCase()}`,
+            status: 400,
+          };
         }
-      }
 
-      vehicle.status = status;
-      await vehicle.save();
+        // to handle cases for vehicles that the date set inactive is missing
+        if (vehicle.status === VehicleStatusEnum.INACTIVE && !vehicle.dateSetInactive){
+          throw {
+            message: "Vehicle Date Set Inactive missing. Please contact support",
+            status: 400,
+          }
+        }
+  
+        if (status === VehicleStatusEnum.INACTIVE) {
+          // TODO: uncomment this if plan changes to vehicle can not be set to inactive without having to cear debts
+          // commenting it out for now as NIGER requested it shouldn't work as such
+          // Check if the vehicle has any unpaid tax
+          // if (vehicle.taxPaidUntil && vehicle.taxPaidUntil < new Date()) {
+          //   throw {
+          //     message: "Cannot set vehicle to inactive. There is unpaid tax.",
+          //     status: 400,
+          //   };
+          // }
+          vehicle.dateSetInactive = moment().tz("Africa/Lagos").toDate();
+        } else if (status === VehicleStatusEnum.ACTIVATED) {
+          // If the vehicle was inactive, adjust the taxPaidUntil date
+          if (vehicle.dateSetInactive && vehicle.taxPaidUntil) {
+            const inactiveDays = moment()
+              .tz("Africa/Lagos")
+              .diff(moment(vehicle.dateSetInactive), "days");
+            vehicle.taxPaidUntil = moment(vehicle.taxPaidUntil)
+              .tz("Africa/Lagos")
+              .add(inactiveDays, "days")
+              .toDate();
+          }
+  
+          // Clear the dateSetInactive as the vehicle is now active
+          vehicle.dateSetInactive = undefined;
+  
+          // If the taxPaidUntil date is in the past, set it to today
+          if (!vehicle.taxPaidUntil) {
+            vehicle.taxPaidUntil = moment()
+              .tz("Africa/Lagos")
+              .startOf("day")
+              .toDate();
+          }
+        }
+  
+        
+        // Log the status change
+        await VehicleService.logVehicleStatusChange(
+          vehicleId,
+          vehicle.status,
+          status,
+          vehicle.taxPaidUntil as Date,
+          updatedBy as string,
+          session
+        );
+        
+        vehicle.status = status;
+        await vehicle.save({ session });
 
-      return vehicle;
+        return vehicle;
+
+      });
+
+
+
+
+      return result;
     } catch (error: any) {
       throw new Error(error.message);
     }
+  }
+
+  private static async logVehicleStatusChange(
+    vehicleId: string,
+    previousStatus: VehicleStatusEnum,
+    newStatus: VehicleStatusEnum,
+    taxPaidUntil: Date,
+    updatedBy: string,
+    session: ClientSession
+  ) {
+    const log = {
+      vehicle: vehicleId,
+      previousStatus,
+      newStatus,
+      taxPaidUntil,
+      updatedBy,
+    }
+
+    await VehicleStatusLog.create([log], { session });
   }
 
   /**
