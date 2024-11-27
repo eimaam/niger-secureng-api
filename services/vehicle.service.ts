@@ -144,7 +144,7 @@ export class VehicleService {
         //     status: 400,
         //   };
         // }
-        vehicle.dateSetInactive = new Date();
+        vehicle.dateSetInactive = moment().tz("Africa/Lagos").toDate();
       } else if (status === VehicleStatusEnum.ACTIVATED) {
         // If the vehicle was inactive, adjust the taxPaidUntil date
         if (vehicle.dateSetInactive && vehicle.taxPaidUntil) {
