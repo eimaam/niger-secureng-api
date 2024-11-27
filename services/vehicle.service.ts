@@ -134,6 +134,14 @@ export class VehicleService {
         };
       }
 
+      // to handle cases for vehicles that the date set inactive is missing
+      if (vehicle.status === VehicleStatusEnum.INACTIVE && !vehicle.dateSetInactive){
+        throw {
+          message: "Vehicle Date Set Inactive missing. Please contact support",
+          status: 400,
+        }
+      }
+
       if (status === VehicleStatusEnum.INACTIVE) {
         // TODO: uncomment this if plan changes to vehicle can not be set to inactive without having to cear debts
         // commenting it out for now as NIGER requested it shouldn't work as such
