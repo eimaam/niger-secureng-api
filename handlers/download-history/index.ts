@@ -9,7 +9,7 @@ import { UserModel } from "../../models/User";
 
 export class DownloadHistory {
     static async getAll(req: Request, res: Response){
-        const { type, filter, year, vehicleCode, driverId, 
+        const { type, filter, year, vehicleCode, driverId, driverAssociationNumber,
             processedBy // name of the user that processed the download
         } = req.query;
 
@@ -24,6 +24,7 @@ export class DownloadHistory {
             query("year").optional().isInt(),
             query("vehicleCode").optional().isString(),
             query("driverId").optional().isMongoId(),
+            query("driverAssociationNumber").optional().isAlphanumeric(),
             query("page").optional().isInt(),
             query("limit").optional().isInt(),
         ];
@@ -75,6 +76,10 @@ export class DownloadHistory {
 
             if (driverId){
                 query.driver = driverId;
+            }
+
+            if (driverAssociationNumber){
+                query.driver = { $regex: new RegExp(driverAssociationNumber as string, "i") };
             }
 
             if (processedBy){
