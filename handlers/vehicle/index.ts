@@ -1266,6 +1266,12 @@ if (updatedVehicle.identityCode) {
     const { vehicleId } = req.params;
     const { status } = req.body;
 
+    // TODO: return message that feature is currently disabled
+    return res.status(400).json({
+      success: false,
+      message: "Feature is currently disabled",
+    });
+
     if (!vehicleId) {
       return res
         .status(400)
@@ -1312,6 +1318,12 @@ if (updatedVehicle.identityCode) {
     const userId = req.headers["userid"] as string;
 
     const user = await UserModel.findById(userId);
+
+    // TODO: return message that feature is currently disabled
+    return res.status(400).json({
+      success: false,
+      message: "Feature is currently disabled",
+    });
 
     try {
       // Extract filters from query parameters
