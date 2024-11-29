@@ -1266,12 +1266,16 @@ if (updatedVehicle.identityCode) {
     const { vehicleId } = req.params;
     const { status } = req.body;
 
-    // todo: disable vehicle update 
-    return res.status(400).json({
-      message: "Vehicle update is currently disabled",
-      status: 400,
-    });
-
+    
+// todo: remove later 
+        // Only allow setting to inactive
+        if (status !== VehicleStatusEnum.INACTIVE ){
+          throw {
+            message: `Service update. Vehicle can only be set to inactive for now`,
+            status: 400,
+          };
+        }
+        
     if (!vehicleId) {
       return res
         .status(400)
