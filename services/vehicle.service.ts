@@ -7,6 +7,7 @@ import { PaymentTypeModel } from "../models/PaymentType";
 import { VehicleOwner } from "../models/VehicleOwner";
 import { VehicleStatusLog } from "../models/VehicleStatusLog";
 import { withMongoTransaction } from "../utils/mongoTransaction";
+import UnitModel from "../models/Unit";
 
 interface UpdateVehicleQuotaParams {
   vehicleId: mongoose.Types.ObjectId | string;
@@ -330,6 +331,13 @@ export class VehicleService {
       })
         .countDocuments()
         .session(mongoSession);
+
+      const unit = await UnitModel.findById(unitId).select("code").session(mongoSession);
+
+      // for MAK unit code, its lagging by 1, so we add 1 to the total count
+      if (unit?.code === "MAK") {
+        return totalVehiclesInSameUnit + 6;
+      }
 
       return totalVehiclesInSameUnit;
     } catch (error: any) {
