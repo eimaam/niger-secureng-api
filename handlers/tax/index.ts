@@ -37,12 +37,6 @@ export class Tax {
     const { numberOfDays = 1 } = req.body;
     const vendorUserId = req.headers["userid"];
 
-    // TODO: return message that feature is currently disabled
-    return res.status(400).json({
-      success: false,
-      message: "Feature is currently disabled",
-    });
-
     if (!vehicleId) {
       throw new Error("Vehicle ID is required");
     }
