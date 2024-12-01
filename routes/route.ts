@@ -871,27 +871,33 @@ route.get(
 // download entire vehicle collection and store to my Mac download folder
 route.get("/download/data/vehicle", async (_req, res) => {
   try {
-    // Fetch vehicles from the database
     const vehicles = await Vehicle.find();
     const data = JSON.stringify(vehicles, null, 2);
-
-    // Create a temporary file in memory
     const fileName = `vehicles-${Date.now()}.json`;
     const tempFilePath = path.join(__dirname, fileName);
 
-    // Write JSON data to a file
-    fs.writeFileSync(tempFilePath, data, "utf-8");
-    console.log(`File created: ${tempFilePath}`);
+    // Use a stream to write the file asynchronously
+    const writeStream = fs.createWriteStream(tempFilePath);
+    writeStream.write(data);
+    writeStream.end();
 
-    // Send the file to the client for download
-    res.download(tempFilePath, fileName, (err) => {
-      if (err) {
-        console.error("Error sending file:", err);
-        res.status(500).send("Error downloading file");
-      }
+    writeStream.on('finish', () => {
+      console.log("File written successfully.");
+      
+      // Stream the file back to the client
+      res.download(tempFilePath, fileName, (err) => {
+        if (err) {
+          console.error("Error sending file:", err);
+          res.status(500).send("Error downloading file");
+        }
+        // Clean up the temporary file
+        fs.unlinkSync(tempFilePath);
+      });
+    });
 
-      // Delete the file after sending it
-      fs.unlinkSync(tempFilePath);
+    writeStream.on('error', (err) => {
+      console.error("Error writing file:", err);
+      res.status(500).send("Error creating file");
     });
   } catch (error:any) {
     console.error("Error during file download:", error);
