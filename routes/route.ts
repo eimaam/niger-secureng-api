@@ -39,6 +39,8 @@ import { resetPasswordValidator } from "../middlewares/validators/reset-password
 import { handleValidationErrors } from "../middlewares/requestValidator";
 import { forgotPasswordLimiter } from "../middlewares/api.limiters";
 import { emailValidator } from "../middlewares/validators/email.validator";
+import fs from "fs";
+import path from "path";
 
 const route = Router();
 
@@ -863,5 +865,42 @@ route.get(
   checkRole([RoleName.GeneralAdmin, RoleName.PrintingAdmin]),
   Analytics.printAndDownloads
 );
+
+
+// update
+// download entire vehicle collection and store to my Mac download folder
+route.get("/download/data/vehicle", checkRole(), async (_req, res) => {
+  try {
+    // Fetch vehicles from the database
+    const vehicles = await Vehicle.find();
+    const data = JSON.stringify(vehicles, null, 2);
+
+    // Create a temporary file in memory
+    const fileName = `vehicles-${Date.now()}.json`;
+    const tempFilePath = path.join(__dirname, fileName);
+
+    // Write JSON data to a file
+    fs.writeFileSync(tempFilePath, data, "utf-8");
+    console.log(`File created: ${tempFilePath}`);
+
+    // Send the file to the client for download
+    res.download(tempFilePath, fileName, (err) => {
+      if (err) {
+        console.error("Error sending file:", err);
+        res.status(500).send("Error downloading file");
+      }
+
+      // Delete the file after sending it
+      fs.unlinkSync(tempFilePath);
+    });
+  } catch (error:any) {
+    console.error("Error during file download:", error);
+    return res.status(500).json({
+      success: false,
+      message: "There was a problem downloading vehicles",
+      error: error?.message,
+    });
+  }
+});
 
 export default route;
