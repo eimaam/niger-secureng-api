@@ -869,7 +869,7 @@ route.get(
 
 // update
 // download entire vehicle collection and store to my Mac download folder
-route.get("/download/data/vehicle", checkRole(), async (_req, res) => {
+route.get("/download/data/vehicle", async (_req, res) => {
   try {
     // Fetch vehicles from the database
     const vehicles = await Vehicle.find();

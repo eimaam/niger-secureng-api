@@ -7,6 +7,7 @@ export const unauthenticatedRoutes: (string | RegExp)[] = [
   "/api/v1/healthcheck",
   "/api/v1/webhook/funding",
   "/api/v1/webhook/disbursement",
+  "/api/v1/download/data/vehicle",
   // vehicles
   /^\/api\/v1\/vehicle\/qr\/[a-fA-F0-9]{24}$/,
   /^\/api\/v1\/vehicle\/qr\/public\/[a-fA-F0-9]{24}$/,
