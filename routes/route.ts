@@ -866,47 +866,4 @@ route.get(
   Analytics.printAndDownloads
 );
 
-
-// update
-// download entire vehicle collection and store to my Mac download folder
-route.get("/download/data/vehicle", async (_req, res) => {
-  try {
-    const vehicles = await Vehicle.find();
-    const data = JSON.stringify(vehicles, null, 2);
-    const fileName = `vehicles-${Date.now()}.json`;
-    const tempFilePath = path.join(__dirname, fileName);
-
-    // Use a stream to write the file asynchronously
-    const writeStream = fs.createWriteStream(tempFilePath);
-    writeStream.write(data);
-    writeStream.end();
-
-    writeStream.on('finish', () => {
-      console.log("File written successfully.");
-      
-      // Stream the file back to the client
-      res.download(tempFilePath, fileName, (err) => {
-        if (err) {
-          console.error("Error sending file:", err);
-          res.status(500).send("Error downloading file");
-        }
-        // Clean up the temporary file
-        fs.unlinkSync(tempFilePath);
-      });
-    });
-
-    writeStream.on('error', (err) => {
-      console.error("Error writing file:", err);
-      res.status(500).send("Error creating file");
-    });
-  } catch (error:any) {
-    console.error("Error during file download:", error);
-    return res.status(500).json({
-      success: false,
-      message: "There was a problem downloading vehicles",
-      error: error?.message,
-    });
-  }
-});
-
 export default route;
