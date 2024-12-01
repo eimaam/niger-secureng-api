@@ -12,6 +12,7 @@ interface ITransaction extends Document {
   amount: number; // Amount paid
   type: mongoose.Types.ObjectId; // Reference to PaymentType
   daysPaid?: number; // Number of days paid for
+  paidTill?: Date; // Date till which payment was made marking expiry date of that tax payment
   date: Date; // Date of transaction
   status: PaymentStatusEnum; // Status of the transaction 
   beneficiaries: IBeneficiaryDetail[]; // Array of beneficiaries with their percentages
@@ -24,6 +25,7 @@ const TransactionSchema = new Schema<ITransaction>({
   amount: { type: Number, required: true, index: true },
   type: { type: Schema.Types.ObjectId, ref: 'PaymentType', required: true, index: true },
   daysPaid: { type: Number },
+  paidTill: { type: Date },
   date: { type: Date, required: true, default: Date.now, index: true },
   status: { type: String, enum: Object.values(PaymentStatusEnum), default: PaymentStatusEnum.SUCCESSFUL , index:true },
   beneficiaries: [{

@@ -216,6 +216,7 @@ export class Tax {
               daysPaid: numberOfDays,
               status: PaymentStatusEnum.SUCCESSFUL,
               vehicle: vehicleId,
+              paidTill: newTaxPaidUntil,
               processedBy: vendorUserAccount._id,
               type: paymentType._id,
               beneficiaries: beneficiariesWithPercentages.map((b) => ({
