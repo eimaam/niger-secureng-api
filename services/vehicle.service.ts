@@ -159,6 +159,12 @@ export class VehicleService {
           //   };
           // }
           vehicle.dateSetInactive = moment().tz("Africa/Lagos").toDate();
+
+          // add taxpaiduntil field to be set to today if its not available in the vehicle
+          if (!vehicle.taxPaidUntil) {
+            vehicle.taxPaidUntil = moment().tz("Africa/Lagos").startOf("day").toDate();
+          }
+
         } else if (status === VehicleStatusEnum.ACTIVATED) {
           // If the vehicle was inactive, adjust the taxPaidUntil date
           if (vehicle.dateSetInactive && vehicle.taxPaidUntil) {

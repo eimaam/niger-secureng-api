@@ -1265,16 +1265,6 @@ if (updatedVehicle.identityCode) {
   static async updateVehicleStatus(req: Request, res: Response) {
     const { vehicleId } = req.params;
     const { status } = req.body;
-
-    
-// todo: remove later 
-        // Only allow setting to inactive
-        if (status !== VehicleStatusEnum.INACTIVE ){
-          throw {
-            message: `Service update. Vehicle can only be set to inactive for now`,
-            status: 400,
-          };
-        }
         
     if (!vehicleId) {
       return res
