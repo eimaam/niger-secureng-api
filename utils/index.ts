@@ -292,3 +292,23 @@ export const hasPaidForToday = (taxPaidUntil: Date | null): boolean => {
 export const hashData = async (data: string): Promise<string> => {
   return await bcrypt.hash(data, 10);
 };
+
+/**
+ * Adds a specified number of non-Sunday days to a date
+ * @param startDate The starting date
+ * @param days Number of non-Sunday days to add
+ * @returns The new date after adding the specified number of non-Sunday days
+ */
+export const addNonSundayDays = (startDate: Date, days: number): Date => {
+  const result = moment(startDate).tz("Africa/Lagos");
+  let daysAdded = 0;
+
+  while (daysAdded < days) {
+    result.add(1, 'days');
+    if (result.day() !== 0) { // 0 represents Sunday
+      daysAdded++;
+    }
+  }
+
+  return result.endOf('day').toDate();
+};

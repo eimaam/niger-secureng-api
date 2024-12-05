@@ -23,7 +23,7 @@ import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import mongoose, { isValidObjectId, ObjectId } from "mongoose";
 import { WalletTransactionType } from "../../models/WalletTransaction";
 import { UserService } from "../../services/user.service";
-import { generateUniqueReference } from "../../utils";
+import { addNonSundayDays, generateUniqueReference } from "../../utils";
 import { WalletTypeEnum } from "../../models/Wallet";
 import { body, param, validationResult } from "express-validator";
 import {
@@ -75,10 +75,7 @@ export class Tax {
           vehicle.taxPaidUntil || moment().tz("Africa/Lagos").startOf("day").toDate();
 
         // Calculate new tax paid until date
-        const newTaxPaidUntil = moment(effectiveTaxPaidUntil).tz("Africa/Lagos")
-          .add(numberOfDays, "days")
-          .endOf("day")
-          .toDate();
+        const newTaxPaidUntil = addNonSundayDays(effectiveTaxPaidUntil, numberOfDays);
 
         const vendorUserAccount: IUser = await UserModel.findById(
           vendorUserId
@@ -455,10 +452,7 @@ export class Tax {
         const lastPaidUntilDate = moment.utc(
           vehicle.taxPaidUntil || moment.utc()
         );
-        vehicle.taxPaidUntil = lastPaidUntilDate
-          .add(numberOfDays, "days")
-          .endOf("day")
-          .toDate();
+        vehicle.taxPaidUntil = addNonSundayDays(lastPaidUntilDate.toDate(), numberOfDays);
 
         if (vehicle.status === VehicleStatusEnum.NOT_ACTIVATED)
           vehicle.status = VehicleStatusEnum.ACTIVATED;
