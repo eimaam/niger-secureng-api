@@ -102,8 +102,6 @@ export class Vehicles {
         if (parsedOwnerData.phoneNumber)
           ownerQuery.phoneNumber = parsedOwnerData.phoneNumber;
 
-        console.log("ownerQuery", ownerQuery);
-
         const existingVehicleOwner = await VehicleOwner.findOne({
           $or: Object.keys(ownerQuery).map((key) => ({
             [key]: ownerQuery[key],
@@ -126,7 +124,6 @@ export class Vehicles {
             image: null,
             createdBy: userId,
           };
-
           // Create the new owner and store as an object
           vehicleOwner = (
             await VehicleOwner.create([vehicleOwnerData], {
@@ -305,38 +302,38 @@ export class Vehicles {
           }
 
           // Update owner with image URL
-          await VehicleOwner.findByIdAndUpdate(
+          const ownerUpdate = await VehicleOwner.findByIdAndUpdate(
             (vehicleOwner as IVehicleOwner)?._id,
-            {
-              image: imageUrl,
-            }
+            { image: imageUrl }
           );
-        } catch (error) {
-          // Rollback vehicle creation if image upload fails
+
+          if (!ownerUpdate) {
+            throw new Error("Failed to update owner with image URL");
+          }
+        } catch (error:any) {
+          // Complete rollback of all operations
           await withMongoTransaction(async (session) => {
-            await Vehicle.findByIdAndDelete(newVehicle?.[0]?._id).session(
-              session
-            );
-            await MonnifyService.cancelInvoice(
-              result?.invoice?.invoiceReference,
-              session
-            );
-            // Delete the newly created owner only if they were just created in this transaction
-            if (isNewOwner) {
-              await VehicleOwner.findByIdAndDelete(
-                (vehicleOwner as IVehicleOwner)?._id
-              ),
-                {
-                  session,
-                };
-            } else {
-              // undo add vehicle to owner's list
+            // Delete the vehicle if created
+            if (newVehicle?.[0]?._id) {
+              await Vehicle.findByIdAndDelete(newVehicle[0]._id).session(session);
+            }
+
+            // Cancel the invoice if created
+            if (result?.invoice?.invoiceReference) {
+              await MonnifyService.cancelInvoice(result.invoice.invoiceReference, session);
+            }
+
+            // Delete the vehicle owner if newly created
+            if (isNewOwner && vehicleOwner?._id) {
+              await VehicleOwner.findByIdAndDelete(vehicleOwner._id).session(session);
+            }
+
+            // Remove vehicle reference from owner's list if it was added
+            if (vehicleOwner?._id && newVehicle?.[0]?._id) {
               await VehicleOwner.findByIdAndUpdate(
-                (vehicleOwner as IVehicleOwner)?._id,
+                vehicleOwner._id,
                 {
-                  $pull: {
-                    vehicles: newVehicle?.[0]?._id,
-                  },
+                  $pull: { vehicles: newVehicle[0]._id }
                 },
                 { session }
               );
@@ -345,7 +342,8 @@ export class Vehicles {
 
           throw {
             code: 500,
-            message: "Image upload failed, rolling back changes",
+            message: "Image upload failed, rolling back all changes",
+            error: error.message
           };
         }
       }
