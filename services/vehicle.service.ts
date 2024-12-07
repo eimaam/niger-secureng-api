@@ -133,6 +133,13 @@ export class VehicleService {
           };
         }
 
+        if (vehicle.status === VehicleStatusEnum.NOT_ACTIVATED){
+          throw {
+            message: `Vehicle is not activated. Debt does not count.`,
+            status: 400,
+          };
+        }
+
         if (vehicle.status === status) {
           throw {
             message: `Vehicle is already ${status.toLowerCase()}`,
