@@ -133,13 +133,6 @@ export class VehicleService {
           };
         }
 
-        if (vehicle.status === VehicleStatusEnum.NOT_ACTIVATED){
-          throw {
-            message: `Vehicle is not activated. Debt does not count.`,
-            status: 400,
-          };
-        }
-
         if (vehicle.status === status) {
           throw {
             message: `Vehicle is already ${status.toLowerCase()}`,
@@ -165,6 +158,16 @@ export class VehicleService {
           //     status: 400,
           //   };
           // }
+
+          // return err as a NOT ACTIVATED Vehicle has no debt acruing 
+          // and should not be set to inactive
+          if (vehicle.status === VehicleStatusEnum.NOT_ACTIVATED){
+            throw {
+              message: `Vehicle is not activated. Debt does not count.`,
+              status: 400,
+            };
+          }
+
           vehicle.dateSetInactive = moment().tz("Africa/Lagos").toDate();
 
           // add taxpaiduntil field to be set to today if its not available in the vehicle
