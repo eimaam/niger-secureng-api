@@ -1211,7 +1211,12 @@ if (updatedVehicle.identityCode) {
             return Promise.all(
               vehicles.map(async (vehicle) => {
                 if ((vehicle.owner as IVehicleOwner)?.image) {
-                  const imageUrl = (vehicle.owner as IVehicleOwner).image;
+                  // format url to new bucket location in new project
+                const currentImageUrl = (vehicle.owner as IVehicleOwner).image;
+                const imageUrl = currentImageUrl.replace( 
+                  "https://storage.googleapis.com/general_tax_users_images",
+                  "https://storage.googleapis.com/bexilgroup/bucket/general_tax_users_images"
+                );
                   try {
                     const base64Image = await convertImageToBase64(imageUrl);
                     (vehicle.owner as IVehicleOwner).image = base64Image;
