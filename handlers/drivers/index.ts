@@ -78,7 +78,9 @@ export class Drivers {
         if (email) searchCriteria.email = email;
 
         const existingDriver = await DriverModel.findOne({
-          $or: Object.keys(searchCriteria).map(key => ({ [key]: searchCriteria[key] })),
+          $or: Object.keys(searchCriteria).map((key) => ({
+            [key]: searchCriteria[key],
+          })),
         }).session(session);
 
         if (existingDriver) {
@@ -171,12 +173,9 @@ export class Drivers {
 
       if (result.invoice) {
         try {
-          const location = `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}`
-          const imageUrl = await uploadImage(
-            imageFile,
-            location
-          );
-          
+          const location = `${BUCKET_STORAGE_LOCATION.DRIVERS_IMAGE}/${result.driver._id}`;
+          const imageUrl = await uploadImage(imageFile, location);
+
           if (!imageUrl) {
             throw new Error("Error uploading image");
           }
@@ -403,7 +402,10 @@ export class Drivers {
     }
 
     if (associationNumber) {
-      query.associationNumber = { $regex: associationNumber as string, $options: "i" };
+      query.associationNumber = {
+        $regex: associationNumber as string,
+        $options: "i",
+      };
     }
 
     const userId = req.headers["userid"] as string;
@@ -456,7 +458,7 @@ export class Drivers {
           })
           .populate({
             path: "createdBy",
-            select: "fullName email"
+            select: "fullName email",
           })
           .skip(skip)
           .limit(limit);
@@ -466,7 +468,20 @@ export class Drivers {
           return await Promise.all(
             drivers.map(async (driver) => {
               if (driver.image) {
-                const imageUrl = driver.image;
+                // format url to new bucket location in new project
+                // only for those urls that are having the old
+                const OLD_BUCKET_PATH = "general_tax_users_images";
+                const NEW_BUCKET_PATH =
+                  "bexilgroup/bucket/general_tax_users_images";
+
+                // Get the current image URL
+                const currentImageUrl = driver.image;
+
+                // Update the image URL if it contains the old bucket path
+                const imageUrl = currentImageUrl?.includes(OLD_BUCKET_PATH)
+                  ? currentImageUrl.replace(OLD_BUCKET_PATH, NEW_BUCKET_PATH)
+                  : currentImageUrl;
+
                 try {
                   const base64Image = await convertImageToBase64(imageUrl);
                   driver.image = base64Image;

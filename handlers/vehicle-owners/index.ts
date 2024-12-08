@@ -23,7 +23,7 @@ export class VehicleOwners {
       if (email) filters.email = email;
 
       const vehicleOwner = await VehicleOwner.findOne({
-        $or: Object.keys(filters).map(key => ({ [key]: filters[key] })),
+        $or: Object.keys(filters).map((key) => ({ [key]: filters[key] })),
       });
 
       if (vehicleOwner) {
@@ -93,7 +93,19 @@ export class VehicleOwners {
         return await Promise.all(
           vehicleOwners.map(async (owner) => {
             if (owner.image) {
-              const imageUrl = owner.image;
+              // format url to new bucket location in new project for only owners with old bucket path
+
+              const OLD_BUCKET_PATH = "general_tax_users_images";
+              const NEW_BUCKET_PATH =
+                "bexilgroup/bucket/general_tax_users_images";
+
+              // Get the current image URL
+              const currentImageUrl = owner.image;
+
+              // Update the image URL if it contains the old bucket path
+              const imageUrl = currentImageUrl?.includes(OLD_BUCKET_PATH)
+                ? currentImageUrl.replace(OLD_BUCKET_PATH, NEW_BUCKET_PATH)
+                : currentImageUrl;
               try {
                 const base64Image = await convertImageToBase64(imageUrl);
                 owner.image = base64Image;

@@ -31,7 +31,7 @@ import {
 import { uploadImage } from "../../services/googlecloud.service";
 import { body, param, validationResult } from "express-validator";
 import { BUCKET_STORAGE_LOCATION } from "../../utils/config";
-import moment from 'moment-timezone';
+import moment from "moment-timezone";
 
 interface IVehicleRequest extends IVehicle {
   ownerId: mongoose.Types.ObjectId | string;
@@ -310,22 +310,29 @@ export class Vehicles {
           if (!ownerUpdate) {
             throw new Error("Failed to update owner with image URL");
           }
-        } catch (error:any) {
+        } catch (error: any) {
           // Complete rollback of all operations
           await withMongoTransaction(async (session) => {
             // Delete the vehicle if created
             if (newVehicle?.[0]?._id) {
-              await Vehicle.findByIdAndDelete(newVehicle[0]._id).session(session);
+              await Vehicle.findByIdAndDelete(newVehicle[0]._id).session(
+                session
+              );
             }
 
             // Cancel the invoice if created
             if (result?.invoice?.invoiceReference) {
-              await MonnifyService.cancelInvoice(result.invoice.invoiceReference, session);
+              await MonnifyService.cancelInvoice(
+                result.invoice.invoiceReference,
+                session
+              );
             }
 
             // Delete the vehicle owner if newly created
             if (isNewOwner && vehicleOwner?._id) {
-              await VehicleOwner.findByIdAndDelete(vehicleOwner._id).session(session);
+              await VehicleOwner.findByIdAndDelete(vehicleOwner._id).session(
+                session
+              );
             }
 
             // Remove vehicle reference from owner's list if it was added
@@ -333,7 +340,7 @@ export class Vehicles {
               await VehicleOwner.findByIdAndUpdate(
                 vehicleOwner._id,
                 {
-                  $pull: { vehicles: newVehicle[0]._id }
+                  $pull: { vehicles: newVehicle[0]._id },
                 },
                 { session }
               );
@@ -343,7 +350,7 @@ export class Vehicles {
           throw {
             code: 500,
             message: "Image upload failed, rolling back all changes",
-            error: error.message
+            error: error.message,
           };
         }
       }
@@ -741,7 +748,7 @@ export class Vehicles {
         let newVehicleOwnerId: mongoose.Types.ObjectId | string | null =
           newOwnerId;
 
-          if (newOwnerId && !newOwnerData) {
+        if (newOwnerId && !newOwnerData) {
           // verify the owner Id > check if the owner exists
           const existingOwner = await VehicleOwner.findById(newOwnerId).session(
             session
@@ -810,27 +817,27 @@ export class Vehicles {
           const updatedVehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
             {
-              $unset: { 
+              $unset: {
                 identityCode: "",
                 existingId: "",
                 ...(licensePlateNumber ? {} : { licensePlateNumber: "" }),
-              }
+              },
             },
             { session, new: true }
           );
 
-
-// Throw if update failed
-if (updatedVehicle.identityCode) {
-  throw new Error('Failed to remove identityCode from vehicle');
-}
+          // Throw if update failed
+          if (updatedVehicle.identityCode) {
+            throw new Error("Failed to remove identityCode from vehicle");
+          }
           // register a new vehicle
           const newVehicleData = {
             ...vehicleDataWithoutId,
             identityCode: originalIdentityCode,
             // If new licensePlate provided, use it
-  // If no new licensePlate, use the original one
-            licensePlateNumber: licensePlateNumber || originalLicensePlateNumber,
+            // If no new licensePlate, use the original one
+            licensePlateNumber:
+              licensePlateNumber || originalLicensePlateNumber,
             chassisNumber,
             downloadQuota: [],
             owner: newVehicleOwnerId,
@@ -877,8 +884,6 @@ if (updatedVehicle.identityCode) {
               message: "Failed to update Vehicle Owner",
             };
           }
-
-
         } else {
           // update vehicle
           const updatedVehicle = await Vehicle.findByIdAndUpdate(
@@ -936,7 +941,6 @@ if (updatedVehicle.identityCode) {
               message: "Failed to update Vehicle Owner",
             };
           }
-
         }
 
         // process the image upload if new owner is unregistered
@@ -958,10 +962,7 @@ if (updatedVehicle.identityCode) {
 
           if (isUnregisteredOwner && imageFile) {
             const location = `${BUCKET_STORAGE_LOCATION.VEHICLE_OWNERS_IMAGE}/${newVehicleOwnerId}`;
-            const imageUrl = await uploadImage(
-              imageFile,
-              location
-            );
+            const imageUrl = await uploadImage(imageFile, location);
             // Update owner with image URL
             const imageUpdate = await VehicleOwner.findByIdAndUpdate(
               newVehicleOwnerId,
@@ -1211,12 +1212,20 @@ if (updatedVehicle.identityCode) {
             return Promise.all(
               vehicles.map(async (vehicle) => {
                 if ((vehicle.owner as IVehicleOwner)?.image) {
-                  // format url to new bucket location in new project
-                const currentImageUrl = (vehicle.owner as IVehicleOwner).image;
-                const imageUrl = currentImageUrl.replace( 
-                  "https://storage.googleapis.com/general_tax_users_images",
-                  "https://storage.googleapis.com/bexilgroup/bucket/general_tax_users_images"
-                );
+                  // Constants for old and new bucket locations
+                  const OLD_BUCKET_PATH = "general_tax_users_images";
+                  const NEW_BUCKET_PATH =
+                    "bexilgroup/bucket/general_tax_users_images";
+
+                  // Get the current image URL
+                  const currentImageUrl = (vehicle.owner as IVehicleOwner)
+                    .image;
+
+                  // Update the image URL if it contains the old bucket path
+                  const imageUrl = currentImageUrl?.includes(OLD_BUCKET_PATH)
+                    ? currentImageUrl.replace(OLD_BUCKET_PATH, NEW_BUCKET_PATH)
+                    : currentImageUrl;
+
                   try {
                     const base64Image = await convertImageToBase64(imageUrl);
                     (vehicle.owner as IVehicleOwner).image = base64Image;
@@ -1268,7 +1277,7 @@ if (updatedVehicle.identityCode) {
   static async updateVehicleStatus(req: Request, res: Response) {
     const { vehicleId } = req.params;
     const { status } = req.body;
-        
+
     if (!vehicleId) {
       return res
         .status(400)
@@ -1400,19 +1409,24 @@ if (updatedVehicle.identityCode) {
       }
 
       vehicles = vehicles.map((vehicle) => {
-        const startOfToday = moment().startOf('day').toDate();
+        const startOfToday = moment().startOf("day").toDate();
         let { taxPaidUntil, dateSetInactive } = vehicle;
-        
+
         // If the vehicle was inactive, adjust the taxPaidUntil date
         if (dateSetInactive && taxPaidUntil) {
-          const inactiveDays = moment().diff(moment(dateSetInactive), 'days');
-          taxPaidUntil = moment(taxPaidUntil).add(inactiveDays, 'days').toDate();
+          const inactiveDays = moment().diff(moment(dateSetInactive), "days");
+          taxPaidUntil = moment(taxPaidUntil)
+            .add(inactiveDays, "days")
+            .toDate();
         }
-        
-        const daysOwing = getDaysOwing(taxPaidUntil as Date, dateSetInactive as Date);
-        
+
+        const daysOwing = getDaysOwing(
+          taxPaidUntil as Date,
+          dateSetInactive as Date
+        );
+
         const PAID_FOR_TODAY = hasPaidForToday(taxPaidUntil as Date);
-    
+
         return {
           ...vehicle.toObject(),
           daysOwing,
@@ -2141,7 +2155,6 @@ if (updatedVehicle.identityCode) {
             select: "name",
           });
       }
-      
 
       if (!vehicle) {
         return res.status(404).json({
@@ -2151,7 +2164,10 @@ if (updatedVehicle.identityCode) {
       }
 
       const IS_OWING = isOwingTax(vehicle?.taxPaidUntil);
-      const DAYS_OWING = getDaysOwing(vehicle?.taxPaidUntil, vehicle?.dateSetInactive);
+      const DAYS_OWING = getDaysOwing(
+        vehicle?.taxPaidUntil,
+        vehicle?.dateSetInactive
+      );
 
       return res.status(200).json({
         success: true,
