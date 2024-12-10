@@ -33,8 +33,8 @@ const DepositWalletModel =
 // Earnings Wallet Schema
 const EarningsWalletSchema = new Schema<IWallet>(
   {
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
-    balance: { type: Number, default: 0, required: true },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true, index: true },
+    balance: { type: Number, default: 0, required: true, index: true },
     heldBalance: { type: Number, default: 0, required: true },
     type: { type: String, enum: Object.values(WalletTypeEnum), required: true, default: WalletTypeEnum.EARNINGS, index: true },
   },

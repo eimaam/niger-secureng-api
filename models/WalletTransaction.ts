@@ -33,8 +33,8 @@ const WalletTransactionSchema = new Schema<IWalletTransaction>(
       enum: Object.values(WalletTransactionType),
       required: true,
     },
-    from: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    to: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    from: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    to: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     amount: { type: Number, required: true },
     status: {
       type: String,
