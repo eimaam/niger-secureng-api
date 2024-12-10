@@ -158,16 +158,23 @@ export const getDateRange = (
  * @returns {string} Unique reference string.
  */
 export function generateUniqueReference(id?: string): string {
-  const timestamp = Date.now().toString(36); // Base-36 encoded timestamp (shorter and still unique)
-  const randomNum = Math.random().toString(36).substring(2, 10); // Random alphanumeric string
-  const hash = crypto.randomBytes(3).toString("hex"); // Short random hash (6 characters)
+  const timestamp = Date.now().toString(36); // Base-36 encoded timestamp
 
-  let reference = `${timestamp}-${randomNum}-${hash}`;
+  const micro = process.hrtime()[1].toString(36); // Microseconds for extra precision
+
+  const uuid = uuidv4().replace(/-/g, "").substring(0, 8); // Short UUID segment
+
+  const random = crypto.randomBytes(4).toString("hex"); // 8 chars of randomness
+
+  let reference = `${timestamp}-${micro}-${uuid}-${random}`;
 
   if (id) {
     // Add `id` ensuring total length does not exceed 64
+
     const maxIdLength = 64 - reference.length - 1; // Account for `-`
+
     const truncatedId = id.substring(0, maxIdLength);
+
     reference = `${truncatedId}-${reference}`;
   }
 
