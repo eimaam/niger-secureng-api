@@ -1063,6 +1063,71 @@ export class Vehicles {
     }
   }
 
+  static async getDataByIdentityCode(req: Request, res: Response) {
+    const { identityCode } = req.params;
+
+    body("identityCode")
+      .notEmpty()
+      .withMessage("Vehicle ID is required")
+      .isAlphanumeric()
+      .withMessage("Invalid Vehicle ID")
+      .run(req);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+        errors: errors.array(),
+      });
+    }
+
+    try {
+      const vehicle = await Vehicle.findOne({ identityCode })
+        .populate({
+          path: "owner",
+          select: "phoneNumber",
+        })
+        .populate({
+          path: "unit",
+          select: "name code",
+        })
+        .populate({
+          path: "vehicleType",
+          select: "name",
+        });
+
+      if (!vehicle) {
+        return res.status(404).json({
+          success: false,
+          message: "Vehicle not found",
+        });
+      }
+
+      const IS_OWING = isOwingTax(vehicle?.taxPaidUntil);
+      const DAYS_OWING = getDaysOwing(
+        vehicle?.taxPaidUntil,
+        vehicle?.dateSetInactive
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Vehicle data fetched successfully",
+        data: {
+          vehicle,
+          isOwing: IS_OWING,
+          daysOwing: DAYS_OWING,
+        },
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching vehicle data",
+        error: error.message,
+      });
+    }
+  }
+
   static async getAll(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || DEFAULT_QUERY_PAGE;
     const limit = parseInt(req.query.limit as string) || DEFAULT_QUERY_LIMIT;
@@ -1229,7 +1294,7 @@ export class Vehicles {
 
                   try {
                     const base64Image = await compressAndConvertToBase64(imageUrl);
-                    (vehicle.owner as IVehicleOwner).image = base64Image as string;
+                    (vehicle.owner as IVehicleOwner).image = imageUrl
                   } catch (error) {
                     console.error(
                       `Failed to convert image for vehicle ${vehicle.id}:`,
@@ -2254,4 +2319,5 @@ export class UnregisteredVehicles {
       });
     }
   }
+  
 }

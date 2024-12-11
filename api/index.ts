@@ -10,6 +10,7 @@ import { verifyToken } from "../middlewares/auth.middleware";
 import { API_RATE_LIMIT, WEBHOOK_RATE_LIMIT } from "../utils/constants";
 import { Config } from "../utils/config";
 import { checkPasswordChanged } from "../middlewares/defaultPasswordCheck.middleware";
+import unauthenticatedRoutes from "../routes/unauthenticate.routes";
 
 const PORT = process.env.PORT || 4000;
 
@@ -68,6 +69,8 @@ const handleWebhookCors = (req:Request, res:Response, next:NextFunction) => {
 
 // Apply the IP whitelisting middleware
 app.use(handleWebhookCors);
+
+app.use("/api/v1", unauthenticatedRoutes);
 
 // verify authorization token middleware
 app.use(verifyToken);
