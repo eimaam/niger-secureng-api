@@ -290,6 +290,7 @@ export class AnalyticsService {
               $lt: endDate,
             },
             status: PaymentStatusEnum.SUCCESSFUL,
+            "beneficiaries.userId": new mongoose.Types.ObjectId(userId)
           },
         },
         {

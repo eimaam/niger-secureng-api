@@ -25,6 +25,7 @@ import { header, query, validationResult } from "express-validator";
 import InvoiceModel, { InvoiceStatusEnum } from "../../models/Invoice";
 import { PaymentTypeModel } from "../../models/PaymentType";
 import { DriverModel } from "../../models/Driver";
+import mongoose from "mongoose";
 
 export class Analytics {
   static async Main(req: Request, res: Response) {
@@ -1234,6 +1235,11 @@ export class Analytics {
         const matchConditions: any = {
           date: { $gte: startDate, $lte: endDate },
           status: status || PaymentStatusEnum.SUCCESSFUL,
+          "beneficiaries" : {
+            $elemMatch: {
+              userId: new mongoose.Types.ObjectId(userId)
+            }
+          }
         };
 
         const wallet = await WalletService.getWalletByOwnerId(
@@ -1248,6 +1254,11 @@ export class Analytics {
           },
           {
             $unwind: "$beneficiaries",
+          },
+          {
+            $match: {
+              "beneficiaries.userId": new mongoose.Types.ObjectId(userId)
+            },
           },
           {
             $lookup: {
@@ -1414,7 +1425,11 @@ export class Analytics {
         const matchConditions: any = {
           date: { $gte: startDate, $lte: endDate },
           status: status || PaymentStatusEnum.SUCCESSFUL,
-          "beneficiaries.userId": userId,
+          beneficiaries: {
+            $elemMatch: {
+              userId: new mongoose.Types.ObjectId(userId)
+            }
+          }
         };
 
         const wallet = await WalletService.getWalletByOwnerId(
@@ -1429,7 +1444,9 @@ export class Analytics {
             $unwind: "$beneficiaries",
           },
           {
-            $match: { "beneficiaries.userId": userId },
+            $match: { 
+              "beneficiaries.userId": new mongoose.Types.ObjectId(userId)
+            },
           },
           {
             $group: {
@@ -1462,10 +1479,22 @@ export class Analytics {
 
         const overallProfit = await TransactionModel.aggregate([
           {
+            $match: {
+              status: PaymentStatusEnum.SUCCESSFUL,
+              beneficiaries: {
+                $elemMatch: {
+                  userId: new mongoose.Types.ObjectId(userId)
+                }
+              }
+            }
+          },
+          {
             $unwind: "$beneficiaries",
           },
           {
-            $match: { "beneficiaries.userId": userId },
+            $match: { "beneficiaries.userId": 
+              new mongoose.Types.ObjectId(userId)
+             },
           },
           {
             $group: {
@@ -1481,6 +1510,8 @@ export class Analytics {
             },
           },
         ]).session(session);
+
+        console.log("overall profit", overallProfit);
 
         const vendorDetails = await VendorModel.findOne({ _id: userId })
           .select("superVendor")
