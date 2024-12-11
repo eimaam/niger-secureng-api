@@ -83,21 +83,22 @@ export class WalletService {
         ? await EarningsWalletModel.findById(walletId).session(mongoSession)
         : await DepositWalletModel.findById(walletId).session(mongoSession);
 
-        const availableBalance = wallet?.balance - (wallet?.heldBalance ?? 0);
+    const availableBalance = wallet?.balance - (wallet?.heldBalance ?? 0);
 
-        return availableBalance;
+    return availableBalance;
   }
 
   static async holdWalletBalance(
     walletId: string,
-    amount: number, 
+    amount: number,
     walletType: WalletTypeEnum,
     session?: ClientSession
   ) {
     const mongoSession = session ?? null;
-    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
-      ? EarningsWalletModel
-      : DepositWalletModel;
+    const WalletModel =
+      walletType === WalletTypeEnum.EARNINGS
+        ? EarningsWalletModel
+        : DepositWalletModel;
 
     const wallet = await WalletModel.findByIdAndUpdate(
       walletId,
@@ -121,9 +122,10 @@ export class WalletService {
     session?: ClientSession
   ) {
     const mongoSession = session ?? null;
-    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
-      ? EarningsWalletModel
-      : DepositWalletModel;
+    const WalletModel =
+      walletType === WalletTypeEnum.EARNINGS
+        ? EarningsWalletModel
+        : DepositWalletModel;
 
     const wallet = await WalletModel.findByIdAndUpdate(
       walletId,
@@ -144,9 +146,10 @@ export class WalletService {
     session?: ClientSession
   ) {
     const mongoSession = session ?? null;
-    const WalletModel = walletType === WalletTypeEnum.EARNINGS 
-      ? EarningsWalletModel
-      : DepositWalletModel;
+    const WalletModel =
+      walletType === WalletTypeEnum.EARNINGS
+        ? EarningsWalletModel
+        : DepositWalletModel;
 
     const wallet = await WalletModel.findByIdAndUpdate(
       walletId,
@@ -327,74 +330,75 @@ export class WalletService {
     }
 
     const user = await UserModel.findById(userId);
-
     if (!user) {
       throw new Error("User not found");
     }
 
     try {
       const result = await withMongoTransaction(async (session) => {
-        const dbQuery: any = {};
+        // Additional filters
+        const filters: any = {};
 
-        // Define the 'from', "to" & 'processedBy' value based on role
-        if (user.role === RoleName.SuperVendor) {
-          dbQuery["$or"] = [
-            { from: new mongoose.Types.ObjectId(userId) },
-            { to: new mongoose.Types.ObjectId(userId) },
-            { processedBy: new mongoose.Types.ObjectId(userId) },
-          ];
-        } 
-        if (user.role === RoleName.Vendor || user.role === RoleName.Association || user.role === RoleName.Stakeholder) {
-          // vendors can not fund themselves therefore the 'from' field is the superVendorId whereas only the "to" fields indicates a transaction to the vendor
-          dbQuery["to"] = new mongoose.Types.ObjectId(userId);
-        } 
+        // Base query depends on user role
+        const baseQuery =
+          user.role === RoleName.SuperAdmin
+            ? {} // Empty query to get all transactions
+            : {
+                $or: [
+                  { from: new mongoose.Types.ObjectId(userId) },
+                  { to: new mongoose.Types.ObjectId(userId) },
+                ],
+              };
 
-        // Other filters
         if (receiver) {
-          // Find the user ID that matches the receiver's email or phone number
-          const user = await UserModel.findOne({
+          const receiverUser = await UserModel.findOne({
             $or: [
               { email: new RegExp(receiver, "i") },
               { phoneNumber: new RegExp(receiver, "i") },
             ],
           }).select("_id");
 
-          if (user) {
-            dbQuery["to"] = user._id;
-          } else {
-            return [];
+          if (!receiverUser) {
+            return { transactions: [], totalTransactions: 0 };
           }
+          filters["to"] = receiverUser._id;
         }
 
         if (transactionType) {
-          dbQuery["type"] = transactionType;
+          filters["type"] = transactionType;
         }
 
         if (amount) {
-          dbQuery["amount"] = parseFloat(amount);
+          filters["amount"] = parseFloat(amount);
         }
 
-        const transactions = await WalletTransactionModel.find(dbQuery)
-          .populate({
-            path: "from",
-            select: "fullName role email",
-          })
-          .populate({
-            path: "to",
-            select: "fullName role email phoneNumber",
-          })
-          .populate({
-            path: "processedBy",
-            select: "fullName role email",
-          })
-          .skip(skip)
-          .limit(limit)
-          .sort({ createdAt: -1 })
-          .session(session);
+        // Only add $and if there are actual filters
+        const dbQuery =
+          Object.keys(filters).length > 0
+            ? { $and: [baseQuery, filters] }
+            : baseQuery;
 
-        const totalTransactions = await WalletTransactionModel.countDocuments(
-          dbQuery
-        ).session(session);
+        const [transactions, totalTransactions] = await Promise.all([
+          WalletTransactionModel.find(dbQuery)
+            .populate({
+              path: "from",
+              select: "fullName role email",
+            })
+            .populate({
+              path: "to",
+              select: "fullName role email phoneNumber",
+            })
+            .populate({
+              path: "processedBy",
+              select: "fullName role email",
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .session(session),
+
+          WalletTransactionModel.countDocuments(dbQuery).session(session),
+        ]);
 
         return {
           transactions,
@@ -411,8 +415,8 @@ export class WalletService {
         data: result.transactions,
       };
     } catch (error: any) {
-      console.log("Get wallet transaction history error: ", error);
-      throw new Error(error.message);
+      console.error("Get wallet transaction history error:", error);
+      throw new Error("Failed to fetch transaction history");
     }
   }
 
