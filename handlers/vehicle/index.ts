@@ -22,6 +22,7 @@ import {
 import { DEFAULT_QUERY_LIMIT, DEFAULT_QUERY_PAGE } from "../../utils/constants";
 import { DownloadHistoryModel } from "../../models/Transaction";
 import {
+  compressAndConvertToBase64,
   convertImageToBase64,
   generateIdentityCode,
   getDaysOwing,
@@ -1227,8 +1228,8 @@ export class Vehicles {
                     : currentImageUrl;
 
                   try {
-                    // const base64Image = await convertImageToBase64(imageUrl);
-                    (vehicle.owner as IVehicleOwner).image = imageUrl;
+                    const base64Image = await compressAndConvertToBase64(imageUrl);
+                    (vehicle.owner as IVehicleOwner).image = base64Image as string;
                   } catch (error) {
                     console.error(
                       `Failed to convert image for vehicle ${vehicle.id}:`,

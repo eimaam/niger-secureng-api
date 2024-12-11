@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import sharp from "sharp";
 
 // MONNIFY >>
 export const MONNIFY = {
@@ -233,6 +234,44 @@ export async function convertImageToBase64(url: string): Promise<string> {
   const base64 = buffer.toString("base64") as string;
 
   return `data:${mimeType};base64,${base64}`;
+}
+
+const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB in byte
+const MAX_IMAGE_DIMENSION = 1000; // Maximum dimension (1000px)
+
+// Fetch the image and check its size
+async function fetchImage(imageUrl: string): Promise<Buffer | null> {
+  try {
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    return Buffer.from(response.data);
+  } catch (error) {
+    console.error("Error fetching image:", error);
+    return null;
+  }
+}
+
+// Compress and convert the image to Base64
+export async function compressAndConvertToBase64(imageUrl: string): Promise<string | null> {
+  const imageBuffer = await fetchImage(imageUrl);
+
+  if (!imageBuffer) return null;
+
+  try {
+    // Compress the image using sharp, resizing to a maximum of 1000x1000 pixels
+    const compressedImageBuffer = await sharp(imageBuffer)
+      .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+        fit: 'inside', // Ensures the image fits within the given dimensions
+        withoutEnlargement: true, // Prevents enlarging small images
+      })
+      .webp({ quality: 80 }) // Compresses image to WebP format with 80% quality (you can choose other formats like JPEG or PNG)
+      .toBuffer();
+
+    // Convert to Base64
+    return `data:image/webp;base64,${compressedImageBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error("Error compressing image:", error);
+    return null;
+  }
 }
 
 const today = new Date();
