@@ -1227,8 +1227,8 @@ export class Vehicles {
                     : currentImageUrl;
 
                   try {
-                    const base64Image = await convertImageToBase64(imageUrl);
-                    (vehicle.owner as IVehicleOwner).image = base64Image;
+                    // const base64Image = await convertImageToBase64(imageUrl);
+                    (vehicle.owner as IVehicleOwner).image = imageUrl;
                   } catch (error) {
                     console.error(
                       `Failed to convert image for vehicle ${vehicle.id}:`,
