@@ -355,8 +355,10 @@ export class WalletService {
             $or: [
               { email: new RegExp(receiver, "i") },
               { phoneNumber: new RegExp(receiver, "i") },
+              { fullName: new RegExp(receiver, "i") },
             ],
-          }).select("_id");
+          }).select("_id")
+          .session(session)
 
           if (!receiverUser) {
             return { transactions: [], totalTransactions: 0 };
