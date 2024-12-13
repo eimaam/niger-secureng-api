@@ -1294,7 +1294,7 @@ export class Vehicles {
 
                   try {
                     const base64Image = await compressAndConvertToBase64(imageUrl);
-                    (vehicle.owner as IVehicleOwner).image = imageUrl
+                    (vehicle.owner as IVehicleOwner).image = base64Image as string
                   } catch (error) {
                     console.error(
                       `Failed to convert image for vehicle ${vehicle.id}:`,
@@ -1342,7 +1342,7 @@ export class Vehicles {
   // update vehicle status
   static async updateVehicleStatus(req: Request, res: Response) {
     const { vehicleId } = req.params;
-    const { status } = req.body;
+    const { status, reason } = req.body;
 
     if (!vehicleId) {
       return res
