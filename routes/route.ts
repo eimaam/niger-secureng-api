@@ -152,6 +152,7 @@ route.post(
   ]),
   Vehicles.updateVehicleStatus
 );
+
 route.patch(
   "/vehicle/:id",
   checkRole([
@@ -261,7 +262,7 @@ route.post(
 route.get("/drivers/qr/:driverId", Drivers.getDataByQRCode);
 
 // download
-route.get("/downloads", checkRole(), DownloadHistory.getAll);
+route.get("/downloads", checkRole([RoleName.GeneralAdmin, RoleName.PrintingAdmin, RoleName.RegistrationAdmin]), DownloadHistory.getAll);
 route.post(
   "/vehicles/quota",
   checkRole(),

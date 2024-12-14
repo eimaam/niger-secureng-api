@@ -6,6 +6,7 @@ import { getDateRange } from "../../utils";
 import { Vehicle } from "../../models/Vehicle";
 import { DownloadHistoryModel } from "../../models/Transaction";
 import { UserModel } from "../../models/User";
+import { DriverModel } from "../../models/Driver";
 
 export class DownloadHistory {
     static async getAll(req: Request, res: Response){
@@ -79,7 +80,15 @@ export class DownloadHistory {
             }
 
             if (driverAssociationNumber){
-                query.driver = { $regex: new RegExp(driverAssociationNumber as string, "i") };
+                const driver = await DriverModel.findOne({ associationNumber: new RegExp(driverAssociationNumber as string, "i") });
+                if (!driver){
+                    return res.status(404).json({
+                        success: false,
+                        message: "Driver with association number not found"
+                    });
+                }
+
+                query.driver = driver._id;
             }
 
             if (processedBy){
